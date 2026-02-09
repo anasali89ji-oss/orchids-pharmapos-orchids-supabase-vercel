@@ -161,7 +161,7 @@ export async function getDB(): Promise<IDBPDatabase<PharmaPOSDB>> {
 export async function saveOfflineSale(sale: OfflineSale): Promise<void> {
   const database = await getDB()
   await database.put('sales', { ...sale, synced: 0 })
-  await addToSyncQueue('insert', 'sales', sale)
+  await addToSyncQueue('insert', 'sales', sale as unknown as Record<string, unknown>)
 }
 
 export async function getOfflineSales(): Promise<OfflineSale[]> {
@@ -172,7 +172,7 @@ export async function getOfflineSales(): Promise<OfflineSale[]> {
 export async function getUnsyncedSales(): Promise<OfflineSale[]> {
   const database = await getDB()
   const allSales = await database.getAll('sales')
-  return allSales.filter(sale => sale.synced === 0 || sale.synced === false)
+  return allSales.filter(sale => !sale.synced)
 }
 
 export async function markSaleSynced(id: string): Promise<void> {
@@ -186,7 +186,7 @@ export async function markSaleSynced(id: string): Promise<void> {
 export async function saveOfflineHeldSale(held: OfflineHeldSale): Promise<void> {
   const database = await getDB()
   await database.put('held_sales', { ...held, synced: 0 })
-  await addToSyncQueue('insert', 'held_sales', held)
+  await addToSyncQueue('insert', 'held_sales', held as unknown as Record<string, unknown>)
 }
 
 export async function getOfflineHeldSales(): Promise<OfflineHeldSale[]> {
@@ -202,7 +202,7 @@ export async function deleteOfflineHeldSale(id: string): Promise<void> {
 export async function saveOfflineReturn(returnData: OfflineReturn): Promise<void> {
   const database = await getDB()
   await database.put('returns', { ...returnData, synced: 0 })
-  await addToSyncQueue('insert', 'returns', returnData)
+  await addToSyncQueue('insert', 'returns', returnData as unknown as Record<string, unknown>)
 }
 
 export async function getOfflineReturns(): Promise<OfflineReturn[]> {

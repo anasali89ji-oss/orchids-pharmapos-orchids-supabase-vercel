@@ -160,10 +160,10 @@ export class PDFGenerator {
       alternateRowStyles: {
         fillColor: [248, 250, 252]
       },
-      columnStyles: columns.reduce((acc, col, i) => {
-        acc[i] = { halign: col.align || 'left', cellWidth: col.width || 'auto' }
-        return acc
-      }, {} as Record<number, { halign: string; cellWidth: number | string }>),
+        columnStyles: columns.reduce((acc, col, i) => {
+          acc[i] = { halign: (col.align || 'left') as 'left' | 'center' | 'right', cellWidth: col.width || 'auto' }
+          return acc
+        }, {} as Record<number, { halign: 'left' | 'center' | 'right'; cellWidth: number | string }>),
       didDrawPage: () => {
         this.addFooter()
       }

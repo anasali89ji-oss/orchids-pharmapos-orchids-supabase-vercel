@@ -297,7 +297,7 @@ export default function POSPage() {
       total: grandTotal,
       note: customerName || 'Held Sale',
       created_at: new Date().toISOString(),
-      synced: false
+      synced: 0 as number
     }
 
     if (online) {
@@ -345,12 +345,12 @@ export default function POSPage() {
       payment_status: paymentMethod === 'Credit' ? 'Pending' : 'Paid',
       amount_paid: paymentMethod === 'Credit' ? 0 : grandTotal,
       change_given: 0,
-      created_at: new Date().toISOString(),
-      synced: false
-    }
+        created_at: new Date().toISOString(),
+        synced: 0 as number
+      }
 
-    try {
-      for (const item of cart) {
+      try {
+        for (const item of cart) {
         const product = productsCache.current.get(item.id)
         if (product) {
           const newStock = product.stock - item.quantity

@@ -94,10 +94,10 @@ export default function ReturnsPage() {
       refund_method: formData.refund_method,
       status: 'Completed',
       created_at: new Date().toISOString(),
-      synced: false
-    }
+        synced: 0 as number
+      }
 
-    if (online && selectedSale) {
+      if (online && selectedSale) {
       const { error } = await supabase.from('returns').insert({
         return_number: returnNumber,
         sale_id: selectedSale.id,

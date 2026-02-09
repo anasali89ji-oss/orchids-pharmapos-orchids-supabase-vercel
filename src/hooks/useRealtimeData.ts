@@ -51,9 +51,9 @@ export function useRealtimeData<T>({
 
       if (fetchError) throw fetchError
 
-      setData(result || [])
-      setError(null)
-      onDataChange?.(result || [])
+        setData((result || []) as T[])
+        setError(null)
+        onDataChange?.((result || []) as T[])
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to fetch data'))
     } finally {
