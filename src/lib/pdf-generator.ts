@@ -161,9 +161,9 @@ export class PDFGenerator {
         fillColor: [248, 250, 252]
       },
         columnStyles: columns.reduce((acc, col, i) => {
-          acc[i] = { halign: (col.align || 'left') as 'left' | 'center' | 'right', cellWidth: col.width || 'auto' }
+          acc[i] = { halign: (col.align || 'left') as 'left' | 'center' | 'right', cellWidth: (col.width || 'auto') as '*' | 'auto' | number }
           return acc
-        }, {} as Record<number, { halign: 'left' | 'center' | 'right'; cellWidth: number | string }>),
+        }, {} as { [key: string]: Partial<any> }),
       didDrawPage: () => {
         this.addFooter()
       }
