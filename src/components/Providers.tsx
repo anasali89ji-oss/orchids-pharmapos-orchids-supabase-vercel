@@ -3,6 +3,7 @@
 import { ThemeProvider } from 'next-themes'
 import { Toaster } from 'sonner'
 import { AuthProvider } from '@/lib/auth-context'
+import { SuperAdminProvider } from '@/lib/superadmin-context'
 import { useEffect, useState } from 'react'
 import { startAutoSync, refreshProductCache } from '@/lib/sync-service'
 
@@ -50,19 +51,21 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
       <AuthProvider>
-        <SyncManager />
-        <OfflineIndicator />
-        {children}
-        <Toaster 
-          position="top-right" 
-          richColors 
-          closeButton
-          toastOptions={{
-            style: {
-              borderRadius: '12px',
-            }
-          }}
-        />
+        <SuperAdminProvider>
+          <SyncManager />
+          <OfflineIndicator />
+          {children}
+          <Toaster
+            position="top-right"
+            richColors
+            closeButton
+            toastOptions={{
+              style: {
+                borderRadius: '12px',
+              }
+            }}
+          />
+        </SuperAdminProvider>
       </AuthProvider>
     </ThemeProvider>
   )

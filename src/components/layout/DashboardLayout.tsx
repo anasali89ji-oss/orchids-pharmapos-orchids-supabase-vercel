@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
+import { SubscriptionGuard } from '@/components/SubscriptionGuard'
 import { cn } from '@/lib/utils'
 
 interface DashboardLayoutProps {
@@ -37,14 +38,16 @@ export function DashboardLayout({ children, title, subtitle }: DashboardLayoutPr
         'flex min-h-screen flex-col transition-all duration-300',
         sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'
       )}>
-        <Header 
-          onMenuClick={() => setMobileSidebarOpen(true)}
-          title={title}
-          subtitle={subtitle}
-        />
-        <main className="flex-1 p-6">
-          {children}
-        </main>
+          <Header
+            onMenuClick={() => setMobileSidebarOpen(true)}
+            title={title}
+            subtitle={subtitle}
+          />
+          <main className="flex-1 p-6">
+            <SubscriptionGuard>
+              {children}
+            </SubscriptionGuard>
+          </main>
       </div>
     </div>
   )

@@ -22,6 +22,8 @@ export interface AppUser {
   avatar_url?: string
   status: string
   permissions: Record<string, boolean>
+  pharmacy_id?: string
+  is_pharmacy_admin?: boolean
 }
 
 interface AuthContextType {
@@ -167,44 +169,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('email', authUser.email)
         .single()
 
-      if (profile) {
-        const role = profile.role || 'cashier'
-        const permissions = ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.cashier
+        if (profile) {
+          const role = profile.role || 'cashier'
+          const permissions = ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.cashier
 
-        const appUser: AppUser = {
-          id: profile.id,
-          email: profile.email,
-          name: profile.name || authUser.email?.split('@')[0] || 'User',
-          role: role,
-          role_id: profile.role_id,
-          phone: profile.phone,
-          avatar_url: profile.avatar_url,
-          status: profile.status || 'active',
-          permissions
-        }
+          const appUser: AppUser = {
+            id: profile.id,
+            email: profile.email,
+            name: profile.name || authUser.email?.split('@')[0] || 'User',
+            role: role,
+            role_id: profile.role_id,
+            phone: profile.phone,
+            avatar_url: profile.avatar_url,
+            status: profile.status || 'active',
+            permissions,
+            pharmacy_id: profile.pharmacy_id,
+            is_pharmacy_admin: profile.is_pharmacy_admin || false
+          }
         setCachedUser(appUser)
         return appUser
       }
 
-      const { data: newUser } = await supabase
-        .from('users')
-        .insert({
-          email: authUser.email,
-          name: authUser.email?.split('@')[0] || 'User',
-          role: 'super_admin'
-        })
-        .select()
-        .single()
+        const { data: newUser } = await supabase
+          .from('users')
+          .insert({
+            email: authUser.email,
+            name: authUser.email?.split('@')[0] || 'User',
+            role: 'cashier'
+          })
+          .select()
+          .single()
 
-      if (newUser) {
-        const appUser: AppUser = {
-          id: newUser.id,
-          email: newUser.email,
-          name: newUser.name,
-          role: 'super_admin',
-          status: 'active',
-          permissions: ROLE_PERMISSIONS.super_admin
-        }
+        if (newUser) {
+          const appUser: AppUser = {
+            id: newUser.id,
+            email: newUser.email,
+            name: newUser.name,
+            role: 'cashier',
+            status: 'active',
+            permissions: ROLE_PERMISSIONS.cashier
+          }
         setCachedUser(appUser)
         return appUser
       }
@@ -301,25 +305,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       updateLastActivity()
     }
 
-    const events = ['mousedown', 'keydown', 'touchstart', 'scroll']
-    events.forEach(event => window.addEventListener(event, trackActivity, { passive: true }))
+      const events = ['mousedown', 'keydown', 'touchstart', 'scroll', 'click', 'pointermove']
+      events.forEach(event => window.addEventListener(event, trackActivity, { passive: true }))
 
-    activityTimerRef.current = setInterval(() => {
-      if (session && isSessionExpired()) {
-        forceSignOut()
+      activityTimerRef.current = setInterval(() => {
+        if (session && isSessionExpired()) {
+          forceSignOut()
+        }
+      }, 300000)
+
+      return () => {
+        events.forEach(event => window.removeEventListener(event, trackActivity))
+        if (activityTimerRef.current) {
+          clearInterval(activityTimerRef.current)
+        }
       }
-    }, 60000)
+    }, [session, forceSignOut])
 
-    return () => {
-      events.forEach(event => window.removeEventListener(event, trackActivity))
-      if (activityTimerRef.current) {
-        clearInterval(activityTimerRef.current)
-      }
-    }
-  }, [session, forceSignOut])
+    useEffect(() => {
+      if (!session) return
 
-  useEffect(() => {
-    if (loading) return
+      const refreshInterval = setInterval(async () => {
+        const { data: { session: currentSession } } = await supabase.auth.getSession()
+        if (currentSession) {
+          await supabase.auth.refreshSession()
+          updateLastActivity()
+        }
+      }, 10 * 60 * 1000)
+
+      return () => clearInterval(refreshInterval)
+    }, [session, supabase])
+
+    useEffect(() => {
+      if (loading) return
 
     const isPublicRoute = PUBLIC_ROUTES.some(route => pathname?.startsWith(route))
 

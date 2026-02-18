@@ -50,6 +50,10 @@ function UsersContent() {
   useEffect(() => { fetchUsers() }, [fetchUsers])
 
   const openModal = (user?: User) => {
+    if (!user && users.length >= USER_LIMIT) {
+      toast.error(`User limit reached. Your plan supports up to ${USER_LIMIT} users.`)
+      return
+    }
     if (user) {
       setSelectedUser(user)
       setFormData({
@@ -205,14 +209,56 @@ function UsersContent() {
     u.role.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const getRoleBadge = (role: string) => {
-    const styles: Record<string, string> = {
-      super_admin: 'bg-purple-100 text-purple-700',
-      admin: 'bg-blue-100 text-blue-700',
-      cashier: 'bg-green-100 text-green-700'
+const ROLE_OPTIONS = [
+ { value: 'pharmacy_admin', label: 'Pharmacy Admin', description: 'Full access to all features', permissions: ['*'] },
+ { value: 'manager', label: 'Manager', description: 'Can manage products, sales and staff', permissions: ['dashboard', 'pos', 'products', 'sales', 'reports', 'users'] },
+ { value: 'pharmacist', label: 'Pharmacist', description: 'Can dispense medicines and manage prescriptions', permissions: ['pos', 'products', 'customers', 'prescriptions'] },
+ { value: 'cashier', label: 'Cashier', description: 'Can process sales and returns', permissions: ['pos', 'customers'] },
+ { value: 'inventory_clerk', label: 'Inventory Clerk', description: 'Can manage stock and inventory', permissions: ['inventory', 'products', 'purchases', 'suppliers'] },
+ { value: 'accountant', label: 'Accountant', description: 'Can access financial reports and accounting', permissions: ['dashboard', 'reports', 'ledger', 'credits', 'returns'] },
+ { value: 'reporting_analyst', label: 'Reporting Analyst', description: 'Can generate and view reports', permissions: ['reports', 'dashboard'] },
+ { value: 'sales_representative', label: 'Sales Representative', description: 'Can manage customer relationships', permissions: ['customers', 'pos', 'credits', 'receipts'] },
+ { value: 'support_agent', label: 'Support Agent', description: 'Can handle customer support', permissions: ['customers', 'receipts', 'returns'] },
+ { value: 'procurement_officer', label: 'Procurement Officer', description: 'Can manage suppliers and purchase orders', permissions: ['purchases', 'suppliers', 'products', 'inventory'] },
+ { value: 'warehouse_supervisor', label: 'Warehouse Supervisor', description: 'Can oversee inventory operations and staff', permissions: ['inventory', 'products', 'purchases', 'reports'] },
+ { value: 'delivery_coordinator', label: 'Delivery Coordinator', description: 'Can manage deliveries and dispatch', permissions: ['customers', 'receipts'] }
+ ]
+
+const USER_LIMIT = 50
+
+const getRoleBadge = (role: string) => {
+ const styles: Record<string, string> = {
+ super_admin: 'bg-purple-100 text-purple-700',
+ pharmacy_admin: 'bg-purple-100 text-purple-700',
+ manager: 'bg-indigo-100 text-indigo-700',
+ pharmacist: 'bg-teal-100 text-teal-700',
+ cashier: 'bg-green-100 text-green-700',
+ inventory_clerk: 'bg-orange-100 text-orange-700',
+ accountant: 'bg-blue-100 text-blue-700',
+ reporting_analyst: 'bg-cyan-100 text-cyan-700',
+ sales_representative: 'bg-pink-100 text-pink-700',
+ support_agent: 'bg-gray-100 text-gray-700',
+ procurement_officer: 'bg-emerald-100 text-emerald-700',
+ warehouse_supervisor: 'bg-amber-100 text-amber-700',
+ delivery_coordinator: 'bg-sky-100 text-sky-700',
+ admin: 'bg-blue-100 text-blue-700'
+ }
+ return styles[role] || 'bg-gray-100 text-gray-700'
+ }
+
+const getRoleCounts = (users: User[]) => {
+  const counts: Record<string, number> = {}
+  ROLE_OPTIONS.forEach(role => counts[role.value] = 0)
+  counts['super_admin'] = 0
+  counts['admin'] = 0
+
+  users.forEach(u => {
+    if (counts[u.role] !== undefined) {
+      counts[u.role]++
     }
-    return styles[role] || 'bg-gray-100 text-gray-700'
-  }
+  })
+  return counts
+}
 
   if (!hasPermission('manage_users') && !isRole('super_admin')) {
     return (
@@ -247,24 +293,44 @@ function UsersContent() {
           </button>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-xl bg-card p-4 shadow-sm border-l-4 border-purple-500">
-            <p className="text-sm text-muted-foreground">Super Admins</p>
-            <p className="text-2xl font-bold text-purple-600">{users.filter(u => u.role === 'super_admin').length}</p>
-          </div>
-          <div className="rounded-xl bg-card p-4 shadow-sm border-l-4 border-blue-500">
-            <p className="text-sm text-muted-foreground">Admins</p>
-            <p className="text-2xl font-bold text-blue-600">{users.filter(u => u.role === 'admin').length}</p>
-          </div>
-          <div className="rounded-xl bg-card p-4 shadow-sm border-l-4 border-green-500">
-            <p className="text-sm text-muted-foreground">Cashiers</p>
-            <p className="text-2xl font-bold text-green-600">{users.filter(u => u.role === 'cashier').length}</p>
-          </div>
-          <div className="rounded-xl bg-card p-4 shadow-sm border-l-4 border-red-500">
-            <p className="text-sm text-muted-foreground">Inactive</p>
-            <p className="text-2xl font-bold text-red-600">{users.filter(u => u.status === 'inactive').length}</p>
-          </div>
-        </div>
+<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="rounded-xl bg-card p-4 shadow-sm border-l-4 border-purple-500">
+        <p className="text-sm text-muted-foreground">Super Admins</p>
+        <p className="text-2xl font-bold text-purple-600">{users.filter(u => u.role === 'super_admin').length}</p>
+      </div>
+      <div className="rounded-xl bg-card p-4 shadow-sm border-l-4 border-blue-500">
+        <p className="text-sm text-muted-foreground">Admins</p>
+        <p className="text-2xl font-bold text-blue-600">{users.filter(u => u.role === 'admin').length}</p>
+      </div>
+      <div className="rounded-xl bg-card p-4 shadow-sm border-l-4 border-green-500">
+        <p className="text-sm text-muted-foreground">Cashiers</p>
+        <p className="text-2xl font-bold text-green-600">{users.filter(u => u.role === 'cashier').length}</p>
+      </div>
+      <div className="rounded-xl bg-card p-4 shadow-sm border-l-4 border-red-500">
+        <p className="text-sm text-muted-foreground">Inactive</p>
+        <p className="text-2xl font-bold text-red-600">{users.filter(u => u.status === 'inactive').length}</p>
+      </div>
+    </div>
+
+    <div className="rounded-xl bg-card p-4 shadow-sm border border-border">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-sm font-medium">User Limit</span>
+        <span className={`text-sm font-semibold ${users.length >= USER_LIMIT * 0.9 ? 'text-red-600' : 'text-emerald-600'}`}>
+          {users.length} / {USER_LIMIT}
+        </span>
+      </div>
+      <div className="h-2 bg-muted rounded-full overflow-hidden">
+        <div
+          className={`h-full transition-all duration-300 ${users.length >= USER_LIMIT ? 'bg-red-500' : users.length >= USER_LIMIT * 0.9 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+          style={{ width: `${Math.min((users.length / USER_LIMIT) * 100, 100)}%` }}
+        />
+      </div>
+      {users.length >= USER_LIMIT * 0.9 && (
+        <p className="mt-2 text-xs text-amber-600">
+          You're approaching your user limit. Consider upgrading your plan.
+        </p>
+      )}
+    </div>
 
         <div className="rounded-xl border border-border bg-card overflow-hidden">
           {loading ? (
@@ -368,15 +434,19 @@ function UsersContent() {
               <input type="text" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none" placeholder="+92 300 1234567" />
             </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium">Role</label>
-              <select value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none">
-                <option value="cashier">Cashier</option>
-                <option value="admin">Admin</option>
-                {isRole('super_admin') && <option value="super_admin">Super Admin</option>}
-              </select>
-            </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium">Role</label>
+            <select value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+              className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none">
+              {ROLE_OPTIONS.map(role => (
+                <option key={role.value} value={role.value}>{role.label}</option>
+              ))}
+              {isRole('super_admin') && <option value="super_admin">Super Admin</option>}
+            </select>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {ROLE_OPTIONS.find(r => r.value === formData.role)?.description}
+            </p>
+          </div>
             {!selectedUser && (
               <div>
                 <label className="mb-1.5 block text-sm font-medium">Password</label>
