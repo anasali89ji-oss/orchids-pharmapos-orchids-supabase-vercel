@@ -1,58 +1,82 @@
-import { NextResponse } from 'next/server'
+import 'server-only'
+import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { logger } from '@/lib/logger'
+import { rateLimit } from '@/lib/rate-limit'
 
-export async function POST(request: Request) {
+// Edge runtime compatible
+export const runtime = 'edge'
+
+export async function POST(request: NextRequest) {
   try {
-    const { pharmacy_id, cancel_immediately = false } = await request.json()
+    // Rate limiting
+    const rateLimitResult = await rateLimit(request, {
+      interval: 3600000, // 1 hour
+      maxRequests: 10,
+    })
+
+    if (!rateLimitResult.success && rateLimitResult.response) {
+      return rateLimitResult.response
+    }
+
+    const body = await request.json()
+    const { pharmacy_id, reason } = body
 
     if (!pharmacy_id) {
+      logger.warn('Stripe cancel missing pharmacy_id', { body })
       return NextResponse.json({ error: 'pharmacy_id is required' }, { status: 400 })
     }
 
-    const { data: pharmacy, error } = await supabaseAdmin
+    // Update pharmacy subscription status
+    const { error: updateError } = await supabaseAdmin
       .from('pharmacies')
-      .select('id, name, subscription_status, subscription_tier, owner_email')
+      .update({
+        subscription_status: 'cancelled',
+        cancelled_at: new Date().toISOString(),
+        cancellation_reason: reason || 'User requested',
+      })
+      .eq('id', pharmacy_id)
+
+    if (updateError) {
+      logger.error('Failed to cancel subscription', updateError, { pharmacy_id })
+      return NextResponse.json({ error: updateError.message }, { status: 500 })
+    }
+
+    // Send cancellation email notification
+    const { data: pharmacy } = await supabaseAdmin
+      .from('pharmacies')
+      .select('owner_email, name')
       .eq('id', pharmacy_id)
       .single()
 
-    if (error || !pharmacy) {
-      return NextResponse.json({ error: 'Pharmacy not found' }, { status: 404 })
+    if (pharmacy?.owner_email) {
+      await supabaseAdmin
+        .from('notifications')
+        .insert({
+          type: 'subscription',
+          title: 'Subscription Cancelled',
+          message: `Your subscription for ${pharmacy.name} has been cancelled.`,
+          severity: 'warning',
+        })
     }
 
-    const updateData = cancel_immediately
-      ? {
-          subscription_status: 'canceled',
-          status: 'suspended',
-          suspended_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }
-      : {
-          cancel_at_period_end: true,
-          updated_at: new Date().toISOString(),
-        }
-
-    await supabaseAdmin
-      .from('pharmacies')
-      .update(updateData)
-      .eq('id', pharmacy_id)
-
-    await supabaseAdmin.from('email_notifications').insert({
-      type: 'subscription_cancellation',
-      recipient_email: pharmacy.owner_email,
-      subject: `Subscription Cancellation - ${pharmacy.name}`,
-      sent_at: new Date().toISOString(),
-      status: 'sent',
-      pharmacy_id: pharmacy_id
-    })
+    logger.info('Subscription cancelled', { pharmacy_id, reason })
 
     return NextResponse.json({
-      message: cancel_immediately ? 'Subscription canceled immediately' : 'Subscription marked for cancellation at period end',
-      pharmacy_name: pharmacy.name,
-      status: cancel_immediately ? 'canceled' : 'cancel_at_period_end',
-      contact_sales: 'For subscription changes, contact sales@pharmapos.com'
+      message: 'Subscription cancelled successfully',
+      pharmacy_id,
     })
   } catch (error: unknown) {
+    logger.error('Stripe cancel error', error as Error)
     const message = error instanceof Error ? error.message : 'Server error'
     return NextResponse.json({ error: message }, { status: 500 })
   }
+}
+
+export async function GET() {
+  return NextResponse.json({
+    message: 'Manual subscription cancellation active',
+    support_email: 'support@pharmapos.com',
+    cancellation_policy: 'Monthly plans can be cancelled at any time. Access continues until the end of the billing period.',
+  })
 }

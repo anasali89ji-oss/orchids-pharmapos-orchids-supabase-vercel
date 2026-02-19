@@ -1,5 +1,11 @@
+import 'server-only'
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { logger } from '@/lib/logger'
+import { rateLimit } from '@/lib/rate-limit'
+
+// Node runtime for database operations
+export const runtime = 'nodejs'
 
 const TIER_PRICES: Record<string, number> = {
   basic: 9999,
@@ -9,6 +15,15 @@ const TIER_PRICES: Record<string, number> = {
 
 export async function POST(request: Request) {
   try {
+    const rateLimitResult = await rateLimit(request as any, {
+      interval: 3600000, // 1 hour
+      maxRequests: 20,
+    })
+
+    if (!rateLimitResult.success && rateLimitResult.response) {
+      return rateLimitResult.response
+    }
+
     const body = await request.json()
     const {
       name,
@@ -23,6 +38,7 @@ export async function POST(request: Request) {
     } = body
 
     if (!name || !slug || !owner_email || !owner_name) {
+      logger.warn('Create pharmacy validation failed', { body })
       return NextResponse.json(
         { error: 'name, slug, owner_email, and owner_name are required' },
         { status: 400 }
@@ -38,6 +54,7 @@ export async function POST(request: Request) {
       .single()
 
     if (existing) {
+      logger.warn('Pharmacy slug already exists', { slug })
       return NextResponse.json({ error: 'Pharmacy slug already taken' }, { status: 409 })
     }
 
@@ -64,14 +81,18 @@ export async function POST(request: Request) {
       .single()
 
     if (insertError) {
+      logger.error('Failed to create pharmacy', insertError, { body })
       return NextResponse.json({ error: insertError.message }, { status: 500 })
     }
+
+    logger.info('Pharmacy created successfully', { pharmacy_id: pharmacy.id, slug })
 
     return NextResponse.json({
       pharmacy,
       message: 'Pharmacy created successfully. Contact super admin for payment setup.',
     })
   } catch (error: unknown) {
+    logger.error('Create pharmacy error', error as Error)
     const message = error instanceof Error ? error.message : 'Server error'
     return NextResponse.json({ error: message }, { status: 500 })
   }

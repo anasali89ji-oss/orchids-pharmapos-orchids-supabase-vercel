@@ -1,130 +1,136 @@
+import 'server-only'
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { logger } from '@/lib/logger'
+import { rateLimit } from '@/lib/rate-limit'
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json()
-    const { name, email, role, pharmacyId, phone } = body
+// Node runtime for database operations with cryptographic functions
+export const runtime = 'nodejs'
 
-    if (!name || !email || !role || !pharmacyId) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
-    }
-
-        const supabase = await createClient()
-
-        const { data: existingUser } = await supabase
-          .from('users')
-          .select('id')
-          .eq('email', email.toLowerCase())
-          .single()
-
-        if (existingUser) {
-          return NextResponse.json({ error: 'User with this email already exists' }, { status: 400 })
-        }
-
-        const tempPassword = generatePassword(12)
-
-        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-          email: email.toLowerCase(),
-          password: tempPassword,
-          email_confirm: true,
-          user_metadata: {
-            name,
-            role,
-            phone: phone || ''
-          }
-        })
-
-        if (authError || !authData.user) {
-          return NextResponse.json({ error: 'Failed to create user account' }, { status: 500 })
-        }
-
-        const { data: newUser, error: dbError } = await supabase
-          .from('users')
-          .insert({
-            name,
-            email: email.toLowerCase(),
-            role,
-            role_id: role,
-            phone: phone || '',
-            pharmacy_id: pharmacyId,
-            auth_user_id: authData.user.id,
-            status: 'active',
-            is_pharmacy_admin: role === 'pharmacy_admin'
-          })
-          .select()
-          .single()
-
-        if (dbError) {
-          await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
-          return NextResponse.json({ error: 'Failed to create user profile' }, { status: 500 })
-        }
-
-        const pharmacy = await supabase
-          .from('pharmacies')
-          .select('name')
-          .eq('id', pharmacyId)
-          .single()
-
-        const pharmacyName = pharmacy.data?.name || 'PharmaPOS'
-
-    await supabase.from('email_notifications').insert({
-      type: 'user_invitation',
-      recipient_email: email.toLowerCase(),
-      subject: `Welcome to ${pharmacyName} - Your Login Credentials`,
-      sent_at: new Date().toISOString(),
-      status: 'sent',
-      pharmacy_id: pharmacyId
-    })
-
-    return NextResponse.json({
-      success: true,
-      message: 'User created successfully',
-      user: {
-        id: newUser.id,
-        name: newUser.name,
-        email: newUser.email,
-        role: newUser.role,
-        password: tempPassword
-      }
-    })
-
-  } catch (error) {
-    console.error('Invite user error:', error)
-    return NextResponse.json({
-      error: 'Failed to invite user',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
-  }
-}
-
-function generatePassword(length: number): string {
-  const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*'
+// Simple password generator (no bcrypt dependency)
+function generatePassword(length = 12): string {
+  const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%'
   let password = ''
-  for (let i = 0; i < length; i++) {
-    password += charset.charAt(Math.floor(Math.random() * charset.length))
+  for (let i = 0 ; i < length ; i++) {
+    password += charset[Math.floor(Math.random() * charset.length)]
   }
   return password
 }
 
-export async function GET(request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const rateLimitResult = await rateLimit(request, {
+      interval: 3600000, // 1 hour
+      maxRequests: 50,
+    })
 
-    const { data: users, error } = await supabase
-      .from('users')
-      .select('id, name, email, role, phone, status, created_at, pharmacies(name)')
-      .order('created_at', { ascending: false })
-
-    if (error) {
-      return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 })
+    if (!rateLimitResult.success && rateLimitResult.response) {
+      return rateLimitResult.response
     }
 
-    return NextResponse.json({ success: true, users })
+    const body = await request.json()
+    const { pharmacy_id, email, name, role } = body
 
-  } catch (error) {
-    console.error('Fetch users error:', error)
-    return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 })
+    if (!pharmacy_id || !email || !name || !role) {
+      logger.warn('Invite user validation failed', { body })
+      return NextResponse.json(
+        { error: 'pharmacy_id, email, name, and role are required' },
+        { status: 400 }
+      )
+    }
+
+    const validRoles = [
+      'pharmacy_admin',
+      'manager',
+      'pharmacist',
+      'cashier',
+      'inventory_clerk',
+      'accountant',
+      'reporting_analyst',
+      'sales_representative',
+      'support_agent',
+      'procurement_officer',
+      'warehouse_supervisor',
+      'delivery_coordinator',
+    ]
+
+    if (!validRoles.includes(role)) {
+      logger.warn('Invalid user role', { role })
+      return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
+    }
+
+    // Check if user already exists
+    const { data: existing } = await supabaseAdmin
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .eq('pharmacy_id', pharmacy_id)
+      .single()
+
+    if (existing) {
+      logger.warn('User already exists', { email, pharmacy_id })
+      return NextResponse.json({ error: 'User already exists in this pharmacy' }, { status: 409 })
+    }
+
+    // Generate password
+    const password = generatePassword(12)
+
+    // Create user via Supabase Auth
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        name,
+        role,
+        pharmacy_id,
+      },
+    })
+
+    if (authError) {
+      logger.error('Failed to create auth user', authError, { email })
+      return NextResponse.json({ error: authError.message }, { status: 500 })
+    }
+
+    // Create user record
+    const { data: user, error: userError } = await supabaseAdmin
+      .from('users')
+      .insert({
+        id: authData.user?.id,
+        pharmacy_id,
+        email,
+        name,
+        role,
+        is_active: true,
+      })
+      .select()
+      .single()
+
+    if (userError) {
+      logger.error('Failed to create user record', userError)
+      return NextResponse.json({ error: userError.message }, { status: 500 })
+    }
+
+    // Get pharmacy details
+    const { data: pharmacy } = await supabaseAdmin
+      .from('pharmacies')
+      .select('name')
+      .eq('id', pharmacy_id)
+      .single()
+
+    logger.info('User invited successfully', { user_id: user.id, email, role, pharmacy_id })
+
+    return NextResponse.json({
+      user,
+      credentials: {
+        email,
+        password,
+      },
+      message: `User invited successfully. Please share these credentials securely:\n\nEmail: ${email}\nPassword: ${password}\n\nThey can log in at ${pharmacy?.name || 'the pharmacy'}`,
+    })
+  } catch (error: unknown) {
+    logger.error('Invite user error', error as Error)
+    const message = error instanceof Error ? error.message : 'Server error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

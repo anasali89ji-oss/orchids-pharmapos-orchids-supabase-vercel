@@ -88,8 +88,8 @@
           },
           {
             "key": "Access-Control-Allow-Methods",
-            "value": "GET, POST, PUT, DELETE, OPTIONS"
-          },
+          "value": "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        },
           {
             "key": "Access-Control-Allow-Headers",
             "value": "Content-Type, Authorization"
@@ -115,20 +115,48 @@
           "schedule": "*/15 * * * *"
         }
       ],
-    "functions": {
-      "app/**": {
-        "maxDuration": 30,
-        "memory": 1024
+      "functions": {
+        "app/**": {
+          "runtime": "nodejs20.x",
+          "maxDuration": 30,
+          "memory": 1024
+        },
+        "api/**": {
+          "runtime": "nodejs20.x",
+          "maxDuration": 60,
+          "memory": 2048
+        },
+        "superadmin/**": {
+          "runtime": "nodejs20.x",
+          "maxDuration": 30,
+          "memory": 1024
+        },
+        "api/stripe/checkout": {
+          "runtime": "nodejs20.x",
+          "maxDuration": 60,
+          "memory": 1536
+        },
+        "api/stripe/cancel": {
+          "runtime": "nodejs20.x",
+          "maxDuration": 60,
+          "memory": 1536
+        },
+        "api/backup/daily": {
+          "runtime": "nodejs20.x",
+          "maxDuration": 180,
+          "memory": 3072
+        },
+        "api/auth/reset-password/**": {
+          "runtime": "nodejs20.x",
+          "maxDuration": 30,
+          "memory": 1024
+        },
+        "api/cron/**": {
+          "runtime": "nodejs20.x",
+          "maxDuration": 60,
+          "memory": 2048
+        }
       },
-      "api/**": {
-        "maxDuration": 60,
-        "memory": 2048
-      },
-      "superadmin/**": {
-        "maxDuration": 30,
-        "memory": 1024
-      }
-    },
       "env": {
         "NEXT_PUBLIC_SUPABASE_URL": "@supabase_url",
         "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@supabase_anon_key",
@@ -138,4 +166,349 @@
         "STRIPE_WEBHOOK_SECRET": "@stripe_webhook_secret"
       }
   }
+  {
+    "buildCommand": "bun run build",
+    "devCommand": "bun run dev",
+    "installCommand": "bun install",
+    "framework": "nextjs",
+    "regions": ["iad1"],
+    "rewrites": [
+      {
+        "source": "/app/:path*",
+        "destination": "/app/:path*"
+      },
+      {
+        "source": "/superadmin/:path*",
+        "destination": "/superadmin/:path*"
+      },
+      {
+        "source": "/:path*",
+        "destination": "/:path*"
+      }
+    ],
+    "headers": [
+      {
+        "source": "/(.*)",
+        "headers": [
+          {
+            "key": "X-Frame-Options",
+            "value": "SAMEORIGIN"
+          },
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "key": "Referrer-Policy",
+            "value": "strict-origin-when-cross-origin"
+          },
+          {
+            "key": "X-Robots-Tag",
+            "value": "noindex"
+          },
+          {
+            "key": "Strict-Transport-Security",
+          "value": "max-age=31536000; includeSubDomains; preload"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        },
+          {
+            "key": "X-DNS-Prefetch-Control",
+            "value": "on"
+          }
+        ]
+      },
+      {
+        "source": "/(.*)\\.(?:js|css|js\\.map|css\\.map)$",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "/(.*)\\.(?:jpg|jpeg|png|gif|ico|svg|webp|avif)$",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=2592000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "/_next/static/(.*)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "/api/(.*)",
+        "headers": [
+          {
+            "key": "Access-Control-Allow-Credentials",
+            "value": "true"
+          },
+          {
+            "key": "Access-Control-Allow-Origin",
+            "value": "*"
+          },
+          {
+            "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        },
+          {
+            "key": "Access-Control-Allow-Headers",
+            "value": "Content-Type, Authorization"
+          },
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      }
+    ],
+      "crons": [
+        {
+          "path": "/api/backup/daily",
+          "schedule": "0 2 * * *"
+        },
+        {
+          "path": "/api/cron/session-cleanup",
+          "schedule": "0 3 * * *"
+        },
+        {
+          "path": "/api/cron/connection-ping",
+          "schedule": "*/15 * * * *"
+        }
+      ],
+      "functions": {
+        "app/**": {
+          "runtime": "nodejs20.x",
+          "maxDuration": 30,
+          "memory": 1024
+        },
+        "api/**": {
+          "runtime": "nodejs20.x",
+          "maxDuration": 60,
+          "memory": 2048
+        },
+        "superadmin/**": {
+          "runtime": "nodejs20.x",
+          "maxDuration": 30,
+          "memory": 1024
+        },
+        "api/stripe/checkout": {
+          "runtime": "nodejs20.x",
+          "maxDuration": 60,
+          "memory": 1536
+        },
+        "api/stripe/cancel": {
+          "runtime": "nodejs20.x",
+          "maxDuration": 60,
+          "memory": 1536
+        },
+        "api/backup/daily": {
+          "runtime": "nodejs20.x",
+          "maxDuration": 180,
+          "memory": 3072
+        },
+        "api/auth/reset-password/**": {
+          "runtime": "nodejs20.x",
+          "maxDuration": 30,
+          "memory": 1024
+        },
+        "api/cron/**": {
+          "runtime": "nodejs20.x",
+          "maxDuration": 60,
+          "memory": 2048
+        }
+      },
+      "env": {
+        "NEXT_PUBLIC_SUPABASE_URL": "@supabase_url",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@supabase_anon_key",
+        "SUPABASE_SERVICE_ROLE_KEY": "@supabase_service_role_key",
+        "STRIPE_SECRET_KEY": "@stripe_secret_key",
+        "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY": "@stripe_publishable_key",
+        "STRIPE_WEBHOOK_SECRET": "@stripe_webhook_secret"
+      }
+  }
+  {
+    "buildCommand": "bun run build",
+    "devCommand": "bun run dev",
+    "installCommand": "bun install",
+    "framework": "nextjs",
+    "regions": ["iad1"],
+    "rewrites": [
+      {
+        "source": "/app/:path*",
+        "destination": "/app/:path*"
+      },
+      {
+        "source": "/superadmin/:path*",
+        "destination": "/superadmin/:path*"
+      },
+      {
+        "source": "/:path*",
+        "destination": "/:path*"
+      }
+    ],
+    "headers": [
+      {
+        "source": "/(.*)",
+        "headers": [
+          {
+            "key": "X-Frame-Options",
+            "value": "SAMEORIGIN"
+          },
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "key": "Referrer-Policy",
+            "value": "strict-origin-when-cross-origin"
+          },
+          {
+            "key": "X-Robots-Tag",
+            "value": "noindex"
+          },
+          {
+            "key": "Strict-Transport-Security",
+          "value": "max-age=31536000; includeSubDomains; preload"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        },
+          {
+            "key": "X-DNS-Prefetch-Control",
+            "value": "on"
+          }
+        ]
+      },
+      {
+        "source": "/(.*)\\.(?:js|css|js\\.map|css\\.map)$",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "/(.*)\\.(?:jpg|jpeg|png|gif|ico|svg|webp|avif)$",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=2592000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "/_next/static/(.*)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "/api/(.*)",
+        "headers": [
+          {
+            "key": "Access-Control-Allow-Credentials",
+            "value": "true"
+          },
+          {
+            "key": "Access-Control-Allow-Origin",
+            "value": "*"
+          },
+          {
+            "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        },
+          {
+            "key": "Access-Control-Allow-Headers",
+            "value": "Content-Type, Authorization"
+          },
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      }
+    ],
+      "crons": [
+        {
+          "path": "/api/backup/daily",
+          "schedule": "0 2 * * *"
+        },
+        {
+          "path": "/api/cron/session-cleanup",
+          "schedule": "0 3 * * *"
+        },
+        {
+          "path": "/api/cron/connection-ping",
+          "schedule": "*/15 * * * *"
+        }
+      ],
+      "functions": {
+        "app/**": {
+          "runtime": "nodejs20.x",
+          "maxDuration": 30,
+          "memory": 1024
+        },
+        "api/**": {
+          "runtime": "nodejs20.x",
+          "maxDuration": 60,
+          "memory": 2048
+        },
+        "superadmin/**": {
+          "runtime": "nodejs20.x",
+          "maxDuration": 30,
+          "memory": 1024
+        },
+        "api/stripe/checkout": {
+          "runtime": "nodejs20.x",
+          "maxDuration": 60,
+          "memory": 1536
+        },
+        "api/stripe/cancel": {
+          "runtime": "nodejs20.x",
+          "maxDuration": 60,
+          "memory": 1536
+        },
+        "api/backup/daily": {
+          "runtime": "nodejs20.x",
+          "maxDuration": 180,
+          "memory": 3072
+        },
+        "api/auth/reset-password/**": {
+          "runtime": "nodejs20.x",
+          "maxDuration": 30,
+          "memory": 1024
+        },
+        "api/cron/**": {
+          "runtime": "nodejs20.x",
+          "maxDuration": 60,
+          "memory": 2048
+        }
+      },
+      "env": {
+        "NEXT_PUBLIC_SUPABASE_URL": "@supabase_url",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@supabase_anon_key",
+        "SUPABASE_SERVICE_ROLE_KEY": "@supabase_service_role_key",
+        "STRIPE_SECRET_KEY": "@stripe_secret_key",
+        "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY": "@stripe_publishable_key",
+        "STRIPE_WEBHOOK_SECRET": "@stripe_webhook_secret",
+        "CRON_SECRET": "@cron_secret"
+      }
+    }
   

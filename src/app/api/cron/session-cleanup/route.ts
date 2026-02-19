@@ -1,47 +1,41 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import 'server-only'
+import { NextRequest, NextResponse } from 'next/server'
+import { supabaseAdmin } from '@/lib/supabase/admin'
+import { logger } from '@/lib/logger'
 
-export async function GET(request: Request) {
+// Node runtime for database cleanup operations
+export const runtime = 'nodejs'
+
+export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization')
     if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      logger.warn('Unauthorized session cleanup attempt')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const supabase = await createClient()
+    // Delete expired reset tokens (older than 24 hours)
+    const { error: tokenError } = await supabaseAdmin
+      .from('users')
+      .update({
+        reset_token: null,
+        reset_token_expires: null,
+      })
+      .lt('reset_token_expires', new Date(Date.now() - 86400000).toISOString())
 
-    const sevenDaysAgo = new Date()
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-
-    const { error: expiryError } = await supabase
-      .from('inventory_batches')
-      .update({ status: 'expired' })
-      .eq('status', 'active')
-      .lt('expiry_date', sevenDaysAgo.toISOString())
-
-    if (expiryError) {
-      console.error('Expiry check error:', expiryError)
+    if (tokenError) {
+      logger.error('Failed to clean up expired tokens', tokenError)
     }
 
-    const thirtyDaysAgo = new Date()
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    logger.info('Session cleanup completed')
 
-    const { error: logsError } = await supabase
-      .from('system_error_logs')
-      .delete()
-      .lt('created_at', thirtyDaysAgo.toISOString())
-
-    if (logsError) {
-      console.error('Log cleanup error:', logsError)
-    }
-
-    return NextResponse.json({ 
-      success: true,
-      message: 'Session cleanup completed',
-      timestamp: new Date().toISOString()
+    return NextResponse.json({
+      message: 'Session cleanup completed successfully',
+      timestamp: new Date().toISOString(),
     })
-  } catch (error) {
-    console.error('Session cleanup error:', error)
-    return NextResponse.json({ error: 'Cleanup failed' }, { status: 500 })
+  } catch (error: unknown) {
+    logger.error('Session cleanup error', error as Error)
+    const message = error instanceof Error ? error.message : 'Server error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

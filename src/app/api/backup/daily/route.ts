@@ -1,10 +1,16 @@
-import { NextResponse } from 'next/server'
+import 'server-only'
+import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { logger } from '@/lib/logger'
 
-export async function GET(request: Request) {
+// Node runtime for database operations
+export const runtime = 'nodejs'
+
+export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization')
     if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      logger.warn('Unauthorized backup attempt')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -14,7 +20,7 @@ export async function GET(request: Request) {
       .eq('status', 'active')
 
     if (pharmaciesError) {
-      console.error('Error fetching pharmacies:', pharmaciesError)
+      logger.error('Error fetching pharmacies', pharmaciesError)
       return NextResponse.json({ error: 'Error fetching pharmacies' }, { status: 500 })
     }
 
@@ -49,9 +55,14 @@ export async function GET(request: Request) {
 
         backupResults.push(backupData)
       } catch (error) {
-        console.error(`Error backing up pharmacy ${pharmacy.id}:`, error)
+        logger.error(`Error backing up pharmacy ${pharmacy.id}`, error as Error)
       }
     }
+
+    logger.info('Daily backup completed', { 
+      pharmacies_processed: backupResults.length,
+      backup_date: backupDate 
+    })
 
     return NextResponse.json({
       success: true,
@@ -60,7 +71,8 @@ export async function GET(request: Request) {
       details: backupResults
     })
   } catch (error) {
-    console.error('Daily backup error:', error)
-    return NextResponse.json({ error: 'Server error' }, { status: 500 })
+    logger.error('Daily backup error', error as Error)
+    const message = error instanceof Error ? error.message : 'Server error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
