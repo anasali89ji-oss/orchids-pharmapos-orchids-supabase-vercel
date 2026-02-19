@@ -26,10 +26,12 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
-    if (!loading && !isSuperAdmin) {
-      router.push('/superadmin-login')
-    }
-  }, [isSuperAdmin, loading, router])
+      // Only redirect if we've completed loading and user is definitely not a super admin
+      // This prevents redirect loops during initial load
+      if (!loading && !isSuperAdmin) {
+        router.replace('/superadmin-login')
+      }
+    }, [isSuperAdmin, loading, router])
 
   if (loading) {
     return (

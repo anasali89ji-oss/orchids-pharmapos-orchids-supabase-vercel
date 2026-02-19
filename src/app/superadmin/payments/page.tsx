@@ -70,14 +70,14 @@ export default function PaymentsPage() {
   })
   const supabase = createClient()
 
-  const formatPKR = (amount: number) => {
-    return new Intl.NumberFormat('en-PK', {
-      style: 'currency',
-      currency: 'PKR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(amount / 100)
-  }
+    const formatPKR = (amount: number) => {
+      return new Intl.NumberFormat('en-PK', {
+        style: 'currency',
+        currency: 'PKR',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      }).format(amount)
+    }
 
   const fetchPayments = async () => {
     try {
@@ -142,31 +142,31 @@ export default function PaymentsPage() {
     fetchPayments()
   }, [statusFilter, typeFilter, dateRange])
 
-  const exportToCSV = () => {
-    const headers = ['Date', 'Pharmacy', 'Email', 'Type', 'Status', 'Amount', 'Description']
-    const rows = filteredPayments.map(p => [
-      new Date(p.created_at).toLocaleDateString(),
-      `"${p.pharmacies?.name || 'Unknown'}"`,
-      p.pharmacies?.email || '',
-      p.payment_type,
-      p.status,
-      (p.amount / 100).toFixed(2),
-      `"${p.description || ''}"`
-    ])
+    const exportToCSV = () => {
+      const headers = ['Date', 'Pharmacy', 'Email', 'Type', 'Status', 'Amount', 'Description']
+      const rows = filteredPayments.map(p => [
+        new Date(p.created_at).toLocaleDateString(),
+        `"${p.pharmacies?.name || 'Unknown'}"`,
+        p.pharmacies?.email || '',
+        p.payment_type,
+        p.status,
+        (p.amount).toFixed(2),
+        `"${p.description || ''}"`
+      ])
 
-    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
-    const blob = new Blob([csv], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `payments-${new Date().toISOString().split('T')[0]}.csv`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+      const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+      const blob = new Blob([csv], { type: 'text/csv' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `payments-${new Date().toISOString().split('T')[0]}.csv`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
 
-    toast.success('Payments exported successfully')
-  }
+      toast.success('Payments exported successfully')
+    }
 
   const filteredPayments = payments.filter((p) => {
     const matchesSearch =

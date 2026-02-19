@@ -5,22 +5,25 @@ import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/auth-context'
 
 interface Pharmacy {
-  id: string
-  name: string
-  slug: string
-  status: string
-  subscription_status: string
-  plan: string
-  logo_url: string | null
-  trial_ends_at: string | null
-  max_staff_users: number
-  owner_email: string
-  owner_name: string
-  phone: string | null
-  city: string | null
-  country: string
-  license_number: string | null
-}
+    id: string
+    name: string
+    slug: string
+    status: string
+    subscription_status: string
+    plan: string
+    logo_url: string | null
+    trial_ends_at: string | null
+    max_staff_users: number | null
+    owner_email: string
+    owner_name: string
+    phone: string | null
+    city: string | null
+    country: string
+    license_number: string | null
+    is_suspended: boolean
+    subscription_tier: string
+    billing_cycle_anchor: string | null
+  }
 
 interface PharmacyContextType {
   pharmacy: Pharmacy | null

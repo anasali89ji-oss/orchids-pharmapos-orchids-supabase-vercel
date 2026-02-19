@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
@@ -30,54 +30,54 @@ export function SuperAdminProvider({ children }: { children: ReactNode }) {
   const supabase = createClient()
   const router = useRouter()
 
-  const checkSuperAdmin = async () => {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
-      setLoading(false)
-      return
-    }
-
-    try {
-      const { data: sa, error } = await supabase
-        .from('super_admins')
-        .select('*')
-        .eq('auth_user_id', session.user.id)
-        .single()
-
-      if (error) {
-        console.error('Super admin fetch error:', error)
-        setIsSuperAdmin(false)
-        setSuperAdminData(null)
-      } else if (sa) {
-        setIsSuperAdmin(true)
-        setSuperAdminData({
-          id: sa.id,
-          name: sa.name,
-          email: sa.email,
-          status: sa.status,
-          last_login: sa.last_login
-        })
-
-        await supabase
-          .from('super_admins')
-          .update({ last_login: new Date().toISOString() })
-          .eq('id', sa.id)
+  const checkSuperAdmin = useCallback(async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        setLoading(false)
+        return
       }
-    } catch (error) {
-      console.error('Error checking super admin:', error)
-      setIsSuperAdmin(false)
-    } finally {
-      setLoading(false)
+
+      try {
+        const { data: sa, error } = await supabase
+          .from('super_admins')
+          .select('*')
+          .eq('auth_user_id', session.user.id)
+          .single()
+
+        if (error) {
+          console.error('Super admin fetch error:', error)
+          setIsSuperAdmin(false)
+          setSuperAdminData(null)
+        } else if (sa) {
+          setIsSuperAdmin(true)
+          setSuperAdminData({
+            id: sa.id,
+            name: sa.name,
+            email: sa.email,
+            status: sa.status,
+            last_login: sa.last_login
+          })
+
+          await supabase
+            .from('super_admins')
+            .update({ last_login: new Date().toISOString() })
+            .eq('id', sa.id)
+        }
+      } catch (error) {
+        console.error('Error checking super admin:', error)
+        setIsSuperAdmin(false)
+        } finally {
+          setLoading(false)
+        }
+      }, [])
+
+    const refreshSuperAdmin = async () => {
+      await checkSuperAdmin()
     }
-  }
 
-  const refreshSuperAdmin = async () => {
-    await checkSuperAdmin()
-  }
-
-  useEffect(() => {
-    checkSuperAdmin()
-  }, [supabase])
+    useEffect(() => {
+      checkSuperAdmin()
+    }, [])
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password })

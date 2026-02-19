@@ -22,6 +22,21 @@ export async function createClient() {
           }
         },
       },
+      realtime: {
+        params: {
+          eventsPerSecond: 10
+        }
+      },
+      global: {
+        fetch: (url, options = {}) => {
+          const headers = {
+            ...options.headers,
+            'Connection': 'keep-alive',
+            'Keep-Alive': 'timeout=60, max=1000'
+          }
+          return fetch(url, { ...options, headers })
+        }
+      }
     }
   )
 }

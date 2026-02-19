@@ -16,6 +16,7 @@ import { toast } from 'sonner'
 const MAX_RETRIES = 3
 let isSyncing = false
 let syncInterval: ReturnType<typeof setInterval> | null = null
+let isRefreshScheduled = false
 
 export function isOnline(): boolean {
   return typeof navigator !== 'undefined' ? navigator.onLine : true
@@ -115,8 +116,14 @@ export async function refreshProductCache(): Promise<void> {
   if (!isOnline()) return
 
   const supabase = createClient()
-  
+
   try {
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return
+    }
+
     const { data: products, error } = await supabase
       .from('products')
       .select('id, name, brand, generic_name, barcode, price, cost, stock, min_stock, expiry_date, status')
@@ -124,9 +131,14 @@ export async function refreshProductCache(): Promise<void> {
       .gt('stock', 0)
       .order('name')
 
-    if (error) throw error
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return
+      }
+      throw error
+    }
 
-    if (products) {
+    if (products && products.length > 0) {
       await cacheProducts(products.map(p => ({
         ...p,
         generic_name: p.generic_name || '',
@@ -134,8 +146,16 @@ export async function refreshProductCache(): Promise<void> {
         cached_at: new Date().toISOString()
       })))
     }
-  } catch (error) {
-    console.error('Failed to refresh product cache:', error)
+  } catch (error: any) {
+    if (error?.code === 'PGRST116' || error?.code === '401') {
+      return
+    }
+    if (!isRefreshScheduled) {
+      isRefreshScheduled = true
+      setTimeout(() => {
+        isRefreshScheduled = false
+      }, 60000)
+    }
   }
 }
 

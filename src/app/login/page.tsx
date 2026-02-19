@@ -20,45 +20,65 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
 
-    try {
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      })
+        try {
+        const { data, error: authError } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        })
 
-      if (authError) {
-        setError(authError.message)
-        toast.error('Login failed: ' + authError.message)
-        return
-      }
-
-      if (data.session) {
-        const { data: profile } = await supabase
-          .from('users')
-          .select('role, status')
-          .eq('email', email)
-          .single()
-
-        if (profile?.status === 'inactive') {
-          await supabase.auth.signOut()
-          setError('Your account has been deactivated. Contact administrator.')
+        if (authError) {
+          setError(authError.message)
+          toast.error('Login failed: ' + authError.message)
           return
         }
 
-        toast.success('Login successful!')
-        
-        if (profile?.role === 'cashier') {
-          router.push('/pos')
-        } else {
-          router.push('/dashboard')
+        if (data.session) {
+          // Check if it's a super admin
+          const { data: superAdmin } = await supabase
+            .from('super_admins')
+            .select('id, status')
+            .eq('email', email)
+            .maybeSingle()
+
+          if (superAdmin && superAdmin.status === 'active') {
+            toast.success('Super Admin login successful!')
+            router.push('/superadmin')
+            return
+          }
+
+          // Check regular user
+          const { data: profile } = await supabase
+            .from('users')
+            .select('role, status')
+            .eq('email', email)
+            .maybeSingle()
+
+          if (profile?.status === 'inactive') {
+            await supabase.auth.signOut()
+            setError('Your account has been deactivated. Contact administrator.')
+            return
+          }
+
+            toast.success('Login successful!')
+
+            // Check for redirect parameter
+            const redirectUrlParams = new URLSearchParams(window.location.search)
+            const redirectPath = redirectUrlParams.get('redirect')
+            
+            if (redirectPath && !redirectPath.startsWith('/superadmin')) {
+              router.push(redirectPath)
+            } else if (profile?.role === 'cashier') {
+              router.push('/pos')
+            } else {
+              router.push('/dashboard')
+            }
         }
+      } catch (err) {
+        console.error('Login error:', err)
+        setError('An unexpected error occurred')
+      } finally {
+        setLoading(false)
       }
-    } catch (err) {
-      console.error('Login error:', err)
-      setError('An unexpected error occurred')
-    } finally {
-      setLoading(false)
-    }
   }
 
   return (

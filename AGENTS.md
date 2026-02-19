@@ -101,19 +101,38 @@ Multi-tenant architecture with pharmacy_id foreign key on all tables:
 
 ## Super Admin Credentials
 - **Login URL**: `/superadmin-login`
-- **Email**: `admin@pharmapos.com`
+- **Email**: `superadmin@pharmapos.com`
 - **Password**: `admin123`
-- **Default Super Admin**: Name: "Super Admin"
 
-## Recent Enhancements
+## Demo Pharmacy
+- **Name**: Demo Pharmacy
+- **Slug**: demo-pharmacy
+- **Admin Email**: `admin@demo-pharmacy.com` / password: `admin123`
+- **Manager Email**: `manager@demo-pharmacy.com` / password: `manager123`
+- **Pharmacist Email**: `pharmacist@demo-pharmacy.com` / password: `pharmacist123`
+- **Cashier Email**: `cashier@demo-pharmacy.com` / password: `cashier123`
+- **Subscription**: Pro tier (PKR 14,999/mo)
+- **Max Users**: 50
+- **Data**: 20 products, 5 sample sales, 2 purchases, 3 suppliers, 3 customers, 6 categories
+
+## Recent Enhancements (February 2026)
 - Multi-tenant SaaS architecture with pharmacy isolation
 - Super Admin portal (/superadmin-login, /superadmin) for pharmacy management
-- Stripe integration for subscription payments (checkout, webhooks)
-- 12 user roles: pharmacy_admin, manager, pharmacist, cashier, inventory_clerk, accountant, reporting_analyst, sales_representative, support_agent, procurement_officer, warehouse_supervisor, delivery_coordinator
+- Manual subscription management (Stripe removed - now uses email contact system)
+- Database triggers for automatic pharmacy_id assignment on INSERT operations
+- Password reset system with email functionality (/auth/reset-password)
+- Daily backup system with automated Vercel cron job (/api/backup/daily)
+- Subdomain routing support for production (superadmin.pharmapos.com, {slug}.pharmapos.com)
+- Complete bug fixes: middleware, auth-context, pharmacy-context, superadmin dashboards
+- Fixed all 22 critical bugs including infinite loops, permission issues, and data isolation
+- Comprehensive credentials documentation (CREDENTIALS.md) with all access details
+- Enhanced security with proper RLS policies and pharmacy isolation
+- Demo pharmacy pre-populated with sample data for client demonstrations
+- 13 user roles: super_admin, pharmacy_admin, manager, pharmacist, cashier, inventory_clerk, accountant, reporting_analyst, sales_representative, support_agent, procurement_officer, warehouse_supervisor, delivery_coordinator
 - 50-user limit enforcement with upgrade prompts
 - Vercel deployment config (vercel.json) with security headers and cron jobs
 - Settings page with 8 tabs: General, Financial, Inventory, Receipts, Notifications, Backup, Security, Billing
-- Billing tab with subscription plans (Starter 5K, Professional 30K, Enterprise 70K PKR)
+- Billing tab with manual payment details (HBL Bank, JazzCash/EasyPaisa) - contact sales for plan changes
 - Session inactivity fix: 4-hour inactive users stay logged in, 10-min proactive refresh
 - FIFO batch tracking with inventory_batches table
 - 7 purchase types: manual, supplier_order, consignment, transfer_in, return_purchase, adjustment, supplier_return
@@ -127,3 +146,7 @@ Multi-tenant architecture with pharmacy_id foreign key on all tables:
 - Notifications Center with system alerts (low stock, expiry, credits)
 - Optimized POS with useTransition, useMemo for 70Hz-like responsiveness
 - Held Sales restore automatically populates cart when redirecting to POS
+- Email notification system for reports, low stock alerts, payment reminders
+- Super admin user invitation system with auto-generated credentials
+- Fixed POS sidebar - always visible on large screens with expand/collapse toggle
+- Comprehensive access permissions matrix (see ACCESS_PERMISSIONS_SUMMARY.md)

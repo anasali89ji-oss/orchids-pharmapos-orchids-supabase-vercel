@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { stripe, STRIPE_PRICES, SubscriptionTier } from '@/lib/stripe'
+
+const TIER_PRICES: Record<string, number> = {
+  basic: 9999,
+  pro: 14999,
+  enterprise: 24999,
+}
 
 export async function POST(request: Request) {
   try {
@@ -24,7 +29,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const validTier = (tier as string) in STRIPE_PRICES ? (tier as SubscriptionTier) : 'pro'
+    const validTier = tier in TIER_PRICES ? tier : 'pro'
 
     const { data: existing } = await supabaseAdmin
       .from('pharmacies')
@@ -36,13 +41,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Pharmacy slug already taken' }, { status: 409 })
     }
 
-    const customer = await stripe.customers.create({
-      email: owner_email,
-      name: owner_name,
-      metadata: { pharmacy_slug: slug, pharmacy_name: name },
-    })
-
-    const priceConfig = STRIPE_PRICES[validTier]
+    const priceConfig = TIER_PRICES[validTier]
 
     const { data: pharmacy, error: insertError } = await supabaseAdmin
       .from('pharmacies')
@@ -55,10 +54,9 @@ export async function POST(request: Request) {
         address: address || null,
         city: city || null,
         license_number: license_number || null,
-        stripe_customer_id: customer.id,
-        subscription_status: 'pending',
+        subscription_status: 'active',
         subscription_tier: validTier,
-        monthly_amount: priceConfig.amount,
+        monthly_amount: priceConfig,
         plan: 'monthly',
         status: 'active',
       })
@@ -66,14 +64,12 @@ export async function POST(request: Request) {
       .single()
 
     if (insertError) {
-      await stripe.customers.del(customer.id)
       return NextResponse.json({ error: insertError.message }, { status: 500 })
     }
 
     return NextResponse.json({
       pharmacy,
-      stripe_customer_id: customer.id,
-      checkout_url: `/api/stripe/checkout?pharmacy_id=${pharmacy.id}&tier=${validTier}`,
+      message: 'Pharmacy created successfully. Contact super admin for payment setup.',
     })
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Server error'

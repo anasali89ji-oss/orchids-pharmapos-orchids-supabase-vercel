@@ -26,26 +26,29 @@ import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 
 interface Pharmacy {
-  id: string
-  name: string
-  slug: string
-  email: string
-  phone: string | null
-  address: string | null
-  subscription_status: string
-  subscription_tier: string
-  stripe_customer_id: string | null
-  stripe_subscription_id: string | null
-  status: string
-  is_suspended: boolean
-  created_at: string
-  billing_cycle_anchor: string | null
-  user_count?: number
-}
+    id: string
+    name: string
+    slug: string
+    owner_email: string
+    owner_name: string
+    phone: string | null
+    address: string | null
+    subscription_status: string
+    subscription_tier: string
+    stripe_customer_id: string | null
+    stripe_subscription_id: string | null
+    status: string
+    is_suspended: boolean
+    created_at: string
+    billing_cycle_anchor: string | null
+    user_count?: number
+  }
 
 interface NewPharmacyForm {
   name: string
-  email: string
+  owner_name: string
+  owner_email: string
+  slug: string
   phone: string
   address: string
   subscription_tier: 'pro' | 'enterprise'
@@ -59,7 +62,9 @@ export default function PharmaciesPage() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [formData, setFormData] = useState<NewPharmacyForm>({
     name: '',
-    email: '',
+    owner_name: '',
+    owner_email: '',
+    slug: '',
     phone: '',
     address: '',
     subscription_tier: 'pro'
@@ -117,16 +122,18 @@ export default function PharmaciesPage() {
         throw new Error(data.error || 'Failed to create pharmacy')
       }
 
-      toast.success('Pharmacy created successfully! Checkout link generated.')
-      setShowAddModal(false)
-      setFormData({
-        name: '',
-        email: '',
-        phone: '',
-        address: '',
-        subscription_tier: 'pro'
-      })
-      fetchPharmacies()
+        toast.success('Pharmacy created successfully! Checkout link generated.')
+        setShowAddModal(false)
+        setFormData({
+          name: '',
+          owner_name: '',
+          owner_email: '',
+          slug: '',
+          phone: '',
+          address: '',
+          subscription_tier: 'pro'
+        })
+        fetchPharmacies()
 
       // Open checkout URL in new tab
       if (data.checkoutUrl) {
@@ -163,16 +170,16 @@ export default function PharmaciesPage() {
     }
   }
 
-  const filteredPharmacies = pharmacies.filter((p) => {
-    const matchesSearch =
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.slug.toLowerCase().includes(searchTerm.toLowerCase())
+    const filteredPharmacies = pharmacies.filter((p) => {
+      const matchesSearch =
+        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.owner_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.slug.toLowerCase().includes(searchTerm.toLowerCase())
 
-    const matchesStatus = statusFilter === 'all' || p.subscription_status === statusFilter
+      const matchesStatus = statusFilter === 'all' || p.subscription_status === statusFilter
 
-    return matchesSearch && matchesStatus
-  })
+      return matchesSearch && matchesStatus
+    })
 
   const getStatusIcon = (status: string, isSuspended: boolean) => {
     if (isSuspended) return <FiXCircle className="h-5 w-5 text-red-500" />
@@ -302,20 +309,20 @@ export default function PharmaciesPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <FiMail className="h-4 w-4 text-gray-400" />
-                          {pharmacy.email}
-                        </div>
-                        {pharmacy.phone && (
+                      <td className="px-6 py-4">
+                        <div className="space-y-1">
                           <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <FiPhone className="h-4 w-4 text-gray-400" />
-                            {pharmacy.phone}
+                            <FiMail className="h-4 w-4 text-gray-400" />
+                            {pharmacy.owner_email}
                           </div>
-                        )}
-                      </div>
-                    </td>
+                          {pharmacy.phone && (
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <FiPhone className="h-4 w-4 text-gray-400" />
+                              {pharmacy.phone}
+                            </div>
+                          )}
+                        </div>
+                      </td>
                     <td className="px-6 py-4">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getTierBadgeClass(pharmacy.subscription_tier)}`}>
                         {pharmacy.subscription_tier?.toUpperCase() || 'STARTER'}
@@ -371,29 +378,52 @@ export default function PharmaciesPage() {
                 <FiX className="h-5 w-5" />
               </button>
             </div>
-            <form onSubmit={handleCreatePharmacy} className="p-6 space-y-5">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Pharmacy Name</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g. MediCare Pharmacy"
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-                <input
-                  type="email"
-                  required
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="owner@pharmacy.com"
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                />
-              </div>
+              <form onSubmit={handleCreatePharmacy} className="p-6 space-y-5">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Pharmacy Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="e.g. MediCare Pharmacy"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Owner Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.owner_name}
+                    onChange={(e) => setFormData({ ...formData, owner_name: e.target.value })}
+                    placeholder="John Doe"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Owner Email</label>
+                  <input
+                    type="email"
+                    required
+                    value={formData.owner_email}
+                    onChange={(e) => setFormData({ ...formData, owner_email: e.target.value })}
+                    placeholder="owner@pharmacy.com"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Slug</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.slug}
+                    onChange={(e) => setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/\s+/g, '-') })}
+                    placeholder="medicare-pharmacy"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">URL-friendly identifier (lowercase, hyphens only)</p>
+                </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
                 <input

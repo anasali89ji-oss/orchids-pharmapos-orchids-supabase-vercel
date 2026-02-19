@@ -1,0 +1,256 @@
+import jsPDF from 'jspdf'
+
+interface PharmacyInfo {
+  name: string
+  address?: string | null
+  phone?: string | null
+  license_number?: string | null
+}
+
+interface ReturnReceiptItem {
+  product_name: string
+  quantity: number
+  price: number
+  total: number
+  reason: string
+}
+
+interface ReturnReceiptProps {
+  pharmacy: PharmacyInfo
+  returnRecord: {
+    id: string
+    return_date: string
+    return_type: 'refund' | 'exchange'
+    original_sale_id: string
+    customer_name?: string | null
+    subtotal: number
+    tax: number
+    refund_amount: number
+    notes?: string | null
+    processed_by: string
+  }
+  items: ReturnReceiptItem[]
+}
+
+export function generateReturnReceiptPdf(props: ReturnReceiptProps): jsPDF {
+  const { pharmacy, returnRecord, items } = props
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: [80, 220]
+  })
+
+  let y = 5
+  const pageWidth = 80
+  const leftMargin = 5
+  const rightMargin = 5
+
+  doc.setFontSize(15)
+  doc.setFont('helvetica', 'bold')
+  doc.text(pharmacy.name, pageWidth / 2, y, { align: 'center' })
+  y += 5
+
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'normal')
+  if (pharmacy.address) {
+    doc.text(pharmacy.address, pageWidth / 2, y, { align: 'center' })
+    y += 4
+  }
+  if (pharmacy.phone) {
+    doc.text(`Tel: ${pharmacy.phone}`, pageWidth / 2, y, { align: 'center' })
+    y += 4
+  }
+  if (pharmacy.license_number) {
+    doc.text(`License: ${pharmacy.license_number}`, pageWidth / 2, y, { align: 'center' })
+    y += 4
+  }
+
+  y += 2
+  doc.setLineWidth(0.2)
+  doc.line(leftMargin, y, pageWidth - rightMargin, y)
+  y += 4
+
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'bold')
+  doc.text(`${returnRecord.return_type.toUpperCase()} RECEIPT`, pageWidth / 2, y, { align: 'center' })
+  y += 5
+
+  doc.setFontSize(7)
+  doc.setFont('helvetica', 'normal')
+  doc.text(`Return #: ${returnRecord.id}`, leftMargin, y)
+  y += 3
+  doc.text(`Date: ${new Date(returnRecord.return_date).toLocaleString()}`, leftMargin, y)
+  y += 3
+  doc.text(`Type: ${returnRecord.return_type.toUpperCase()}`, leftMargin, y)
+  y += 3
+  doc.text(`Original Sale: ${returnRecord.original_sale_id}`, leftMargin, y)
+  y += 3
+  
+  const customer = returnRecord.customer_name || 'N/A'
+  const trimmedCustomer = customer.length > 30 ? customer.substring(0, 27) + '...' : customer
+  doc.text(`Customer: ${trimmedCustomer}`, leftMargin, y)
+  y += 3
+  doc.text(`Processed by: ${returnRecord.processed_by}`, leftMargin, y)
+  y += 4
+
+  doc.setLineWidth(0.1)
+  doc.line(leftMargin, y, pageWidth - rightMargin, y)
+  y += 3
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(7)
+  doc.text('Item', leftMargin, y)
+  doc.text('Qty', leftMargin + 25, y)
+  doc.text('Price', leftMargin + 35, y)
+  doc.text('Total', pageWidth - rightMargin, y, { align: 'right' })
+  y += 3
+
+  doc.setLineWidth(0.1)
+  doc.line(leftMargin, y, pageWidth - rightMargin, y)
+  y += 3
+
+  doc.setFont('helvetica', 'normal')
+  items.forEach((item) => {
+    const productName = item.product_name.length > 22 ? item.product_name.substring(0, 20) + '..' : item.product_name
+    doc.text(productName, leftMargin, y)
+    doc.text(String(item.quantity), leftMargin + 25, y)
+    doc.text(item.price.toFixed(2), leftMargin + 35, y)
+    doc.text(item.total.toFixed(2), pageWidth - rightMargin, y, { align: 'right' })
+    y += 3
+
+    if (item.reason) {
+      doc.setFontSize(6)
+      const reason = item.reason.length > 38 ? item.reason.substring(0, 35) + '...' : item.reason
+      doc.text(`Reason: ${reason}`, leftMargin, y)
+      doc.setFontSize(7)
+    }
+    y += 4
+  })
+
+  y += 2
+  doc.setLineWidth(0.2)
+  doc.line(leftMargin, y, pageWidth - rightMargin, y)
+  y += 4
+
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'normal')
+  doc.text('Subtotal:', leftMargin, y)
+  doc.text(returnRecord.subtotal.toFixed(2), pageWidth - rightMargin, y, { align: 'right' })
+  y += 3
+
+  if (returnRecord.tax > 0) {
+    doc.text('Tax:', leftMargin, y)
+    doc.text(returnRecord.tax.toFixed(2), pageWidth - rightMargin, y, { align: 'right' })
+    y += 3
+  }
+
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'bold')
+  const refundLabel = returnRecord.return_type === 'refund' ? 'REFUND' : 'TOTAL'
+  doc.text(`${refundLabel}:`, leftMargin, y)
+  doc.text(`Rs ${returnRecord.refund_amount.toFixed(2)}`, pageWidth - rightMargin, y, { align: 'right' })
+  y += 5
+
+  if (returnRecord.notes) {
+    doc.setFontSize(7)
+    doc.setFont('helvetica', 'normal')
+    doc.text('Notes:', leftMargin, y)
+    y += 3
+    const noteLines = doc.splitTextToSize(returnRecord.notes, 70)
+    doc.text(noteLines, leftMargin, y)
+    y += noteLines.length * 3 + 3
+  }
+
+  doc.setLineWidth(0.2)
+  doc.line(leftMargin, y, pageWidth - rightMargin, y)
+  y += 4
+
+  doc.setFontSize(7)
+  doc.setFont('helvetica', 'normal')
+  doc.text('Please check all items immediately', pageWidth / 2, y, { align: 'center' })
+  y += 3
+  doc.text('No returns accepted after 7 days', pageWidth / 2, y, { align: 'center' })
+  y += 5
+  doc.text('Generated by PharmaPOS', pageWidth / 2, y, { align: 'center' })
+
+  return doc
+}
+
+export async function printReturnReceipt(props: ReturnReceiptProps): Promise<void> {
+  const doc = generateReturnReceiptPdf(props)
+  doc.autoPrint()
+  window.open(doc.output('bloburl'))
+}
+
+export function generateReturnReceiptHtml(props: ReturnReceiptProps): string {
+  const { pharmacy, returnRecord, items } = props
+  return `
+    <div class="receipt" style="width: 80mm; font-family: monospace; font-size: 11px; padding: 5mm;">
+      <div style="text-align: center; margin-bottom: 5px;">
+        <h5 style="margin: 0; font-size: 15px; font-weight: bold;">${pharmacy.name}</h5>
+        ${pharmacy.address ? `<p style="margin: 2px 0;">${pharmacy.address}</p>` : ''}
+        ${pharmacy.phone ? `<p style="margin: 2px 0;">Tel: ${pharmacy.phone}</p>` : ''}
+        ${pharmacy.license_number ? `<p style="margin: 2px 0;">License: ${pharmacy.license_number}</p>` : ''}
+      </div>
+      <hr style="border: 1px solid #000; margin: 3px 0;">
+      <div style="text-align: center;">
+        <strong>${returnRecord.return_type.toUpperCase()} RECEIPT</strong>
+      </div>
+      <div style="margin-top: 5px;">
+        <p style="margin: 2px 0;">Return #: ${returnRecord.id}</p>
+        <p style="margin: 2px 0;">Date: ${new Date(returnRecord.return_date).toLocaleString()}</p>
+        <p style="margin: 2px 0;">Type: ${returnRecord.return_type.toUpperCase()}</p>
+        <p style="margin: 2px 0;">Original Sale: ${returnRecord.original_sale_id}</p>
+        <p style="margin: 2px 0;">Customer: ${returnRecord.customer_name || 'N/A'}</p>
+        <p style="margin: 2px 0;">Processed by: ${returnRecord.processed_by}</p>
+      </div>
+      <hr style="border: 1px solid #000; margin: 3px 0;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr style="border-bottom: 1px solid #000;">
+          <th style="text-align: left; padding: 3px;">Item</th>
+          <th style="text-align: right; padding: 3px;">Qty</th>
+          <th style="text-align: right; padding: 3px;">Price</th>
+          <th style="text-align: right; padding: 3px;">Total</th>
+        </tr>
+        ${items.map(item => `
+          <tr>
+            <td colspan="4" style="padding: 2px 0; font-size: 10px;"><strong>${item.product_name}</strong></td>
+          </tr>
+          <tr>
+            <td style="padding: 0; font-size: 9px;">Reason: ${item.reason}</td>
+            <td style="text-align: right;">${item.quantity}</td>
+            <td style="text-align: right;">${item.price.toFixed(2)}</td>
+            <td style="text-align: right;">${item.total.toFixed(2)}</td>
+          </tr>
+        `).join('')}
+      </table>
+      <hr style="border: 1px solid #000; margin: 3px 0;">
+      <div style="margin-top: 5px;">
+        <p style="margin: 2px 0; display: flex; justify-content: space-between;">
+          <span>Subtotal:</span>
+          <span>${returnRecord.subtotal.toFixed(2)}</span>
+        </p>
+        ${returnRecord.tax > 0 ? `
+        <p style="margin: 2px 0; display: flex; justify-content: space-between;">
+          <span>Tax:</span>
+          <span>${returnRecord.tax.toFixed(2)}</span>
+        </p>
+        ` : ''}
+        <p style="margin: 3px 0; display: flex; justify-content: space-between; font-weight: bold; font-size: 13px;">
+          <span>${returnRecord.return_type === 'refund' ? 'REFUND' : 'TOTAL'}:</span>
+          <span>Rs ${returnRecord.refund_amount.toFixed(2)}</span>
+        </p>
+        ${returnRecord.notes ? `
+        <p style="margin: 3px 0;"><strong>Notes:</strong></p>
+        <p style="margin: 2px 0;">${returnRecord.notes}</p>
+        ` : ''}
+      </div>
+      <hr style="border: 1px solid #000; margin: 5px 0;">
+      <div style="text-align: center; margin-top: 5px;">
+        <p style="margin: 2px 0;">Please check all items immediately</p>
+        <p style="margin: 2px 0;">No returns accepted after 7 days</p>
+        <p style="margin: 5px 0 0 0;">Generated by PharmaPOS</p>
+      </div>
+    </div>
+  `
+}

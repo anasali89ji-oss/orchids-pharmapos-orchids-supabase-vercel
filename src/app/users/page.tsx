@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { usePharmacy } from '@/lib/pharmacy-context'
 import { DashboardLayout } from '@/components/layout'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/auth-context'
@@ -25,27 +26,31 @@ interface User {
 }
 
 function UsersContent() {
-  const { user: currentUser, hasPermission, isRole } = useAuth()
-  const [users, setUsers] = useState<User[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [modalOpen, setModalOpen] = useState(false)
-  const [passwordModalOpen, setPasswordModalOpen] = useState(false)
-  const [selectedUser, setSelectedUser] = useState<User | null>(null)
-  const [formData, setFormData] = useState({ email: '', name: '', phone: '', role: 'cashier', password: '' })
-  const [newPassword, setNewPassword] = useState('')
-  const [saving, setSaving] = useState(false)
-  const supabase = createClient()
+    const { user: currentUser, hasPermission, isRole } = useAuth()
+    const { pharmacy } = usePharmacy()
+    const [users, setUsers] = useState<User[]>([])
+    const [loading, setLoading] = useState(true)
+    const [searchQuery, setSearchQuery] = useState('')
+    const [modalOpen, setModalOpen] = useState(false)
+    const [passwordModalOpen, setPasswordModalOpen] = useState(false)
+    const [selectedUser, setSelectedUser] = useState<User | null>(null)
+    const [formData, setFormData] = useState({ email: '', name: '', phone: '', role: 'cashier', password: '' })
+    const [newPassword, setNewPassword] = useState('')
+      const [saving, setSaving] = useState(false)
+      const supabase = createClient()
+      const USER_LIMIT = pharmacy?.max_staff_users ?? 50
 
-  const fetchUsers = useCallback(async () => {
-    const { data } = await supabase
-      .from('users')
-      .select('*')
-      .order('created_at', { ascending: false })
-    
-    setUsers(data || [])
-    setLoading(false)
-  }, [supabase])
+    const fetchUsers = useCallback(async () => {
+      if (!currentUser?.pharmacy_id) return
+      const { data } = await supabase
+        .from('users')
+        .select('*')
+        .eq('pharmacy_id', currentUser.pharmacy_id)
+        .order('created_at', { ascending: false })
+
+      setUsers(data || [])
+      setLoading(false)
+    }, [supabase, currentUser?.pharmacy_id])
 
   useEffect(() => { fetchUsers() }, [fetchUsers])
 
@@ -105,15 +110,16 @@ function UsersContent() {
 
         if (authError) throw authError
 
-        const { error: userError } = await supabase
-          .from('users')
-          .insert({
-            email: formData.email,
-            name: formData.name,
-            phone: formData.phone,
-            role: formData.role,
-            status: 'active'
-          })
+          const { error: userError } = await supabase
+            .from('users')
+            .insert({
+              email: formData.email,
+              name: formData.name,
+              phone: formData.phone,
+              role: formData.role,
+              status: 'active',
+              pharmacy_id: currentUser?.pharmacy_id
+            })
 
         if (userError) throw userError
         toast.success('User created successfully')
@@ -222,9 +228,7 @@ const ROLE_OPTIONS = [
  { value: 'procurement_officer', label: 'Procurement Officer', description: 'Can manage suppliers and purchase orders', permissions: ['purchases', 'suppliers', 'products', 'inventory'] },
  { value: 'warehouse_supervisor', label: 'Warehouse Supervisor', description: 'Can oversee inventory operations and staff', permissions: ['inventory', 'products', 'purchases', 'reports'] },
  { value: 'delivery_coordinator', label: 'Delivery Coordinator', description: 'Can manage deliveries and dispatch', permissions: ['customers', 'receipts'] }
- ]
-
-const USER_LIMIT = 50
+  ]
 
 const getRoleBadge = (role: string) => {
  const styles: Record<string, string> = {

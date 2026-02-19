@@ -1,0 +1,50 @@
+2026-02-18T23:56:42.984Z [network][GET 200] https://ijphfdpifpxgbdogruan.supabase.co/rest/v1/products?select=id%2Cname%2Cbrand%2Cgeneric_name%2Cbarcode%2Cprice%2Ccost%2Cstock%2Cmin_stock%2Cexpiry_date%2Cstatus&status=eq.active&stock=gt.0&order=name.asc
+  response: []
+2026-02-19T00:02:56.794Z [console][warn] The width(-1) and height(-1) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+2026-02-19T00:03:05.990Z [console][warn] The width(-1) and height(-1) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+2026-02-19T00:02:56.299Z [network][GET 200] https://ijphfdpifpxgbdogruan.supabase.co/rest/v1/products?select=id&expiry_date=lte.2026-03-21&expiry_date=gte.2026-02-19
+  response: []
+2026-02-19T00:02:56.325Z [network][GET 200] https://ijphfdpifpxgbdogruan.supabase.co/rest/v1/products?select=*&stock=lt.10&status=eq.active&limit=10
+  response: []
+2026-02-19T00:02:56.359Z [network][GET 200] https://ijphfdpifpxgbdogruan.supabase.co/rest/v1/sales?select=*&order=created_at.desc&limit=5
+  response: []
+2026-02-19T00:02:56.359Z [network][GET 200] https://ijphfdpifpxgbdogruan.supabase.co/rest/v1/ledger?select=balance&order=created_at.desc&limit=1
+  response: []
+2026-02-19T00:02:56.361Z [network][GET 200] https://ijphfdpifpxgbdogruan.supabase.co/rest/v1/credits?select=remaining_amount&status=neq.Paid
+  response: []
+2026-02-19T00:02:56.736Z [network][GET 200] https://ijphfdpifpxgbdogruan.supabase.co/rest/v1/sales?select=grand_total%2Ccreated_at&created_at=gte.2026-02-12T00%3A02%3A55.355Z
+  response: []
+2026-02-19T00:02:57.181Z [network][GET 200] https://ijphfdpifpxgbdogruan.supabase.co/rest/v1/sales?select=grand_total%2Ccreated_at&created_at=gte.2026-02-12T00%3A02%3A55.344Z
+  response: []
+2026-02-19T00:03:05.000Z [network][GET 200] https://ijphfdpifpxgbdogruan.supabase.co/rest/v1/sales?select=grand_total%2Citems&created_at=gte.2026-02-18T19%3A00%3A00.000Z&created_at=lte.2026-02-19T18%3A59%3A59.999Z
+  response: []
+2026-02-19T00:03:05.001Z [network][GET 200] https://ijphfdpifpxgbdogruan.supabase.co/rest/v1/sales?select=grand_total&created_at=gte.2026-01-31T19%3A00%3A00.000Z
+  response: []
+2026-02-19T00:03:05.001Z [network][GET 200] https://ijphfdpifpxgbdogruan.supabase.co/rest/v1/products?select=*&stock=lt.10&status=eq.active&limit=10
+  response: []
+2026-02-19T00:03:05.003Z [network][GET 200] https://ijphfdpifpxgbdogruan.supabase.co/rest/v1/credits?select=remaining_amount&status=neq.Paid
+  response: []
+2026-02-19T00:03:05.003Z [network][GET 200] https://ijphfdpifpxgbdogruan.supabase.co/rest/v1/products?select=id%2Cname%2Cbrand%2Cgeneric_name%2Cbarcode%2Cprice%2Ccost%2Cstock%2Cmin_stock%2Cexpiry_date%2Cstatus&status=eq.active&stock=gt.0&order=name.asc
+  response: []
+2026-02-19T00:03:05.015Z [network][GET 200] https://ijphfdpifpxgbdogruan.supabase.co/rest/v1/products?select=id
+  response: []
+2026-02-19T00:03:05.016Z [network][GET 200] https://ijphfdpifpxgbdogruan.supabase.co/rest/v1/sales?select=*&order=created_at.desc&limit=5
+  response: []
+2026-02-19T00:03:05.017Z [network][GET 200] https://ijphfdpifpxgbdogruan.supabase.co/rest/v1/products?select=id&expiry_date=lte.2026-03-21&expiry_date=gte.2026-02-19
+  response: []
+2026-02-19T00:03:05.017Z [network][GET 200] https://ijphfdpifpxgbdogruan.supabase.co/rest/v1/ledger?select=balance&order=created_at.desc&limit=1
+  response: []
+2026-02-19T00:03:05.926Z [network][GET 200] https://ijphfdpifpxgbdogruan.supabase.co/rest/v1/sales?select=grand_total%2Ccreated_at&created_at=gte.2026-02-12T00%3A03%3A04.312Z
+  response: []
+2026-02-19T00:03:11.468Z [network][GET 200] https://ijphfdpifpxgbdogruan.supabase.co/rest/v1/products?select=id%2Cname%2Cbrand%2Cgeneric_name%2Cbarcode%2Cprice%2Ccost%2Cstock%2Cmin_stock%2Cexpiry_date%2Cstatus&status=eq.active&stock=gt.0&order=name.asc
+  response: []
+2026-02-19T00:03:26.755Z [network][GET 200] https://ijphfdpifpxgbdogruan.supabase.co/rest/v1/products?select=id%2Cname%2Cbrand%2Cgeneric_name%2Cbarcode%2Cprice%2Ccost%2Cstock%2Cmin_stock%2Cexpiry_date%2Cstatus&status=eq.active&stock=gt.0&order=name.asc
+  response: []
+2026-02-19T00:03:32.396Z [network][GET 200] https://ijphfdpifpxgbdogruan.supabase.co/rest/v1/products?select=id%2Cname%2Cbrand%2Cgeneric_name%2Cbarcode%2Cprice%2Ccost%2Cstock%2Cmin_stock%2Cexpiry_date%2Cstatus&status=eq.active&stock=gt.0&order=name.asc
+  response: []

@@ -4,6 +4,7 @@ import { ThemeProvider } from 'next-themes'
 import { Toaster } from 'sonner'
 import { AuthProvider } from '@/lib/auth-context'
 import { SuperAdminProvider } from '@/lib/superadmin-context'
+import { PharmacyProvider } from '@/lib/pharmacy-context'
 import { useEffect, useState } from 'react'
 import { startAutoSync, refreshProductCache } from '@/lib/sync-service'
 
@@ -40,8 +41,12 @@ function OfflineIndicator() {
 
 function SyncManager() {
   useEffect(() => {
-    startAutoSync(30000)
-    refreshProductCache()
+    const timer = setTimeout(() => {
+      refreshProductCache().catch(() => {})
+      startAutoSync(30000)
+    }, 5000)
+
+    return () => clearTimeout(timer)
   }, [])
 
   return null
@@ -52,19 +57,21 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
       <AuthProvider>
         <SuperAdminProvider>
-          <SyncManager />
-          <OfflineIndicator />
-          {children}
-          <Toaster
-            position="top-right"
-            richColors
-            closeButton
-            toastOptions={{
-              style: {
-                borderRadius: '12px',
-              }
-            }}
-          />
+          <PharmacyProvider>
+            <SyncManager />
+            <OfflineIndicator />
+            {children}
+            <Toaster
+              position="top-right"
+              richColors
+              closeButton
+              toastOptions={{
+                style: {
+                  borderRadius: '12px',
+                }
+              }}
+            />
+          </PharmacyProvider>
         </SuperAdminProvider>
       </AuthProvider>
     </ThemeProvider>

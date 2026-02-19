@@ -503,132 +503,111 @@ const tabs = [
           </div>
         )}
 
-{activeTab === 'billing' && (
- <div className="space-y-6 animate-fade-in">
- <div className="rounded-xl border border-border bg-card p-6">
- <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
- <FiCreditCard className="h-5 w-5 text-primary" />
- Subscription Plan
- </h3>
- 
- <div className="grid gap-4 sm:grid-cols-3">
- {[
- { id: 'starter', name: 'Starter', price: 5000, users: 5, features: ['Up to 5 users', 'Basic inventory', 'Sales reporting'] },
- { id: 'professional', name: 'Professional', price: 30000, users: 50, features: ['Up to 50 users', 'Advanced analytics', 'Batch tracking', 'Priority support'] },
- { id: 'enterprise', name: 'Enterprise', price: 70000, users: -1, features: ['Unlimited users', 'Custom integrations', 'Dedicated support', 'SLA guarantee'] },
- ].map((plan) => {
- const isCurrent = subscription.plan === plan.id
- const isActive = subscription.status === 'active'
- return (
- <div
- key={plan.id}
- className={`relative rounded-xl border-2 p-5 transition-all ${
- isCurrent
- ? 'border-primary bg-primary/5'
- : 'border-border hover:border-primary/50'
- }`}
- >
- {isCurrent && (
- <div className="absolute -top-3 left-1/2 -translate-x-1/2">
- <span className="bg-primary text-primary-foreground text-xs font-semibold px-3 py-1 rounded-full">
- Current Plan
- </span>
- </div>
- )}
- <div className="text-center mb-4">
- <h4 className="font-semibold text-lg">{plan.name}</h4>
- <p className="text-3xl font-bold text-primary mt-2">
- {plan.price === 0 ? 'Free' : `PKR ${plan.price.toLocaleString()}`}
- </p>
- <p className="text-sm text-muted-foreground">per month</p>
- </div>
- <ul className="space-y-2 mb-4">
- {plan.features.map((feature, i) => (
- <li key={i} className="text-sm flex items-center gap-2">
- <FiCheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
- {feature}
- </li>
- ))}
- </ul>
- <button
- onClick={() => toast.info('Plan change feature coming soon')}
- disabled={isCurrent}
- className={`w-full rounded-lg px-4 py-2 font-medium text-sm transition-all ${
- isCurrent
- ? 'bg-muted text-muted-foreground cursor-not-allowed'
- : 'bg-primary text-primary-foreground hover:bg-primary/90'
- }`}
- >
- {isCurrent ? 'Current Plan' : 'Switch Plan'}
- </button>
- </div>
- )
- })}
- </div>
+  {activeTab === 'billing' && (
+   <div className="space-y-6 animate-fade-in">
+   <div className="rounded-xl border border-border bg-card p-6">
+   <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+   <FiCreditCard className="h-5 w-5 text-primary" />
+   Subscription Plan
+   </h3>
+   <p className="text-sm text-muted-foreground mb-6">
+   Contact our sales team to upgrade or change your subscription plan.
+   </p>
 
- <div className="mt-6 p-4 rounded-lg bg-muted/50">
- <div className="flex flex-wrap items-center justify-between gap-4">
- <div>
- <p className="font-medium">Current Status</p>
- <p className="text-sm text-muted-foreground capitalize">
- {subscription.status}
- {subscription.currentPeriodEnd && ` · Renews on ${new Date(subscription.currentPeriodEnd).toLocaleDateString()}`}
- </p>
- </div>
- <div className="flex gap-2">
- <button
- onClick={() => toast.info('Cancel subscription feature coming soon')}
- className="px-4 py-2 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors"
- >
- Cancel Plan
- </button>
- <button
- onClick={() => toast.info('Update payment method coming soon')}
- className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
- >
- Update Payment
- </button>
- </div>
- </div>
- </div>
- </div>
+   <div className="grid gap-4 sm:grid-cols-3">
+   {[
+   { id: 'starter', name: 'Starter', price: 5000, users: 5, features: ['Up to 5 users', 'Basic inventory', 'Sales reporting'] },
+   { id: 'professional', name: 'Professional', price: 30000, users: 50, features: ['Up to 50 users', 'Advanced analytics', 'Batch tracking', 'Priority support'] },
+   { id: 'enterprise', name: 'Enterprise', price: 70000, users: -1, features: ['Unlimited users', 'Custom integrations', 'Dedicated support', 'SLA guarantee'] },
+   ].map((plan) => {
+   const isCurrent = subscription.plan === plan.id
+   return (
+   <div
+   key={plan.id}
+   className={`relative rounded-xl border-2 p-5 transition-all ${
+   isCurrent
+   ? 'border-primary bg-primary/5'
+   : 'border-border hover:border-primary/50'
+   }`}
+   >
+   {isCurrent && (
+   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+   <span className="bg-primary text-primary-foreground text-xs font-semibold px-3 py-1 rounded-full">
+   Current Plan
+   </span>
+   </div>
+   )}
+   <div className="text-center mb-4">
+   <h4 className="font-semibold text-lg">{plan.name}</h4>
+   <p className="text-3xl font-bold text-primary mt-2">
+   {plan.price === 0 ? 'Free' : `PKR ${plan.price.toLocaleString()}`}
+   </p>
+   <p className="text-sm text-muted-foreground">per month</p>
+   </div>
+   <ul className="space-y-2 mb-4">
+   {plan.features.map((feature, i) => (
+   <li key={i} className="text-sm flex items-center gap-2">
+   <FiCheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+   {feature}
+   </li>
+   ))}
+   </ul>
+   <button
+   onClick={() => window.open('mailto:sales@pharmapos.com?subject=Plan Change Request', '_blank')}
+   className={`w-full rounded-lg px-4 py-2 font-medium text-sm transition-all ${
+   isCurrent
+   ? 'bg-muted text-muted-foreground cursor-not-allowed'
+   : 'bg-primary text-primary-foreground hover:bg-primary/90'
+   }`}
+   >
+   {isCurrent ? 'Current Plan' : 'Contact Sales'}
+   </button>
+   </div>
+   )
+   })}
+   </div>
 
- <div className="rounded-xl border border-border bg-card p-6">
- <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
- <FiFileText className="h-5 w-5 text-primary" />
- Billing History
- </h3>
- <div className="overflow-x-auto">
- <table className="w-full">
- <thead>
- <tr className="border-b border-border">
- <th className="text-left text-sm font-medium text-muted-foreground py-3">Date</th>
- <th className="text-left text-sm font-medium text-muted-foreground py-3">Description</th>
- <th className="text-right text-sm font-medium text-muted-foreground py-3">Amount</th>
- <th className="text-center text-sm font-medium text-muted-foreground py-3">Status</th>
- <th className="text-right text-sm font-medium text-muted-foreground py-3">Invoice</th>
- </tr>
- </thead>
- <tbody>
- <tr className="border-b border-border/50">
- <td className="py-3 text-sm">{format(new Date(), 'MMM dd, yyyy')}</td>
- <td className="py-3 text-sm">Monthly Subscription - {subscription.plan}</td>
- <td className="py-3 text-sm text-right font-medium">PKR {subscription.plan === 'starter' ? '5,000' : subscription.plan === 'professional' ? '30,000' : '70,000'}</td>
- <td className="py-3 text-center">
- <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">
- <FiCheckCircle className="h-3 w-3" /> Paid
- </span>
- </td>
- <td className="py-3 text-right">
- <button className="text-primary hover:underline text-sm">Download</button>
- </td>
- </tr>
- </tbody>
- </table>
- </div>
- </div>
- </div>
- )}
+   <div className="mt-6 p-4 rounded-lg bg-muted/50">
+   <div className="flex flex-wrap items-center justify-between gap-4">
+   <div>
+   <p className="font-medium">Current Status</p>
+   <p className="text-sm text-muted-foreground capitalize">
+   {subscription.status}
+   </p>
+   </div>
+   <div className="text-sm text-muted-foreground">
+   To manage your subscription, contact our support team at <a href="mailto:support@pharmapos.com" className="text-primary hover:underline">support@pharmapos.com</a>
+   </div>
+   </div>
+   </div>
+   </div>
+
+   <div className="rounded-xl border border-border bg-card p-6">
+   <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+   <FiFileText className="h-5 w-5 text-primary" />
+   Payment Details
+   </h3>
+   <div className="space-y-4">
+     <div>
+       <p className="text-sm text-muted-foreground">Bank Account Details</p>
+       <p className="font-medium mt-1">HBL Bank</p>
+       <p className="text-sm">Account: 1234-5678-9012</p>
+       <p className="text-sm">Title: PharmaPOS Solutions</p>
+       <p className="text-sm">IBAN: PK36HABB0000001234567890</p>
+     </div>
+     <div>
+       <p className="text-sm text-muted-foreground">JazzCash / EasyPaisa</p>
+       <p className="font-medium mt-1">JazzCash Account</p>
+       <p className="text-sm">Account: 0300-1234567</p>
+       <p className="text-sm">Title: PharmaPOS Solutions</p>
+     </div>
+     <div className="pt-4 border-t border-border">
+       <p className="text-sm text-muted-foreground">Please send payment receipt to <a href="mailto:billing@pharmapos.com" className="text-primary hover:underline">billing@pharmapos.com</a> after payment</p>
+     </div>
+   </div>
+   </div>
+   </div>
+   )}
 
  {activeTab === 'security' && (
  <div className="space-y-6 animate-fade-in">

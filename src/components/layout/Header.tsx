@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FiSearch, FiMenu, FiBell, FiMoon, FiSun, FiX, FiFileText } from 'react-icons/fi'
+import { FiSearch, FiMenu, FiBell, FiMoon, FiSun, FiX, FiFileText, FiSidebar } from 'react-icons/fi'
 import { useTheme } from 'next-themes'
 import { createClient } from '@/lib/supabase/client'
 import { Product, Sale } from '@/types'
@@ -10,11 +10,12 @@ import Link from 'next/link'
 
 interface HeaderProps {
   onMenuClick?: () => void
+  onToggleSidebar?: () => void
   title?: string
   subtitle?: string
 }
 
-export function Header({ onMenuClick, title, subtitle }: HeaderProps) {
+export function Header({ onMenuClick, onToggleSidebar, title, subtitle }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<{ products: Product[], receipts: Sale[] }>({ products: [], receipts: [] })
   const [showResults, setShowResults] = useState(false)
@@ -70,22 +71,28 @@ export function Header({ onMenuClick, title, subtitle }: HeaderProps) {
   const hasResults = searchResults.products.length > 0 || searchResults.receipts.length > 0
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-4 border-b border-border bg-card px-6 shadow-sm no-print">
-      <div className="flex items-center gap-4">
-        <button
-          onClick={onMenuClick}
-          className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:hidden"
-        >
-          <FiMenu className="h-5 w-5" />
-        </button>
+      <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-4 border-b border-border bg-card px-6 shadow-sm no-print">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={onMenuClick}
+            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:hidden"
+          >
+            <FiMenu className="h-5 w-5" />
+          </button>
+          <button
+            onClick={onToggleSidebar}
+            className="hidden lg:block rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <FiSidebar className="h-5 w-5" />
+          </button>
 
-        {title && (
-          <div>
-            <h1 className="text-lg font-semibold text-foreground">{title}</h1>
-            {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
-          </div>
-        )}
-      </div>
+          {title && (
+            <div>
+              <h1 className="text-lg font-semibold text-foreground">{title}</h1>
+              {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
+            </div>
+          )}
+        </div>
 
       <div className="flex flex-1 items-center justify-center px-4" ref={searchRef}>
         <div className="relative w-full max-w-lg">

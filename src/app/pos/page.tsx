@@ -305,7 +305,8 @@ export default function POSPage() {
         customer_name: heldSale.customer_name,
         items: heldSale.items,
         total: heldSale.total,
-        note: heldSale.note
+        note: heldSale.note,
+        pharmacy_id: user?.pharmacy_id
       })
       if (error) {
         await saveOfflineHeldSale(heldSale)
@@ -359,24 +360,25 @@ export default function POSPage() {
         }
       }
 
-      if (online) {
-        const { data: saleData, error: saleError } = await supabase
-          .from('sales')
-          .insert({
-            receipt_number: sale.receipt_number,
-            customer_name: sale.customer_name,
-            items: sale.items,
-            subtotal: sale.subtotal,
-            tax: sale.tax,
-            discount: 0,
-            grand_total: sale.grand_total,
-            payment_method: sale.payment_method,
-            payment_status: sale.payment_status,
-            amount_paid: sale.amount_paid,
-            change_given: 0
-          })
-          .select()
-          .single()
+        if (online) {
+          const { data: saleData, error: saleError } = await supabase
+            .from('sales')
+            .insert({
+              receipt_number: sale.receipt_number,
+              customer_name: sale.customer_name,
+              items: sale.items,
+              subtotal: sale.subtotal,
+              tax: sale.tax,
+              discount: 0,
+              grand_total: sale.grand_total,
+              payment_method: sale.payment_method,
+              payment_status: sale.payment_status,
+              amount_paid: sale.amount_paid,
+              change_given: 0,
+              pharmacy_id: user?.pharmacy_id
+            })
+            .select()
+            .single()
 
         if (saleError) throw saleError
 
@@ -395,18 +397,19 @@ export default function POSPage() {
           .limit(1)
           .single()
 
-        const newBalance = (lastEntry?.balance || 0) + (paymentMethod === 'Credit' ? 0 : grandTotal)
-        
-        await supabase.from('ledger').insert({
-          description: `POS Sale - ${customerName || 'Walk-in'}`,
-          ref_id: receiptNumber,
-          ref_type: 'sale',
-          credit: paymentMethod === 'Credit' ? 0 : grandTotal,
-          debit: 0,
-          transaction_type: paymentMethod === 'Credit' ? 'Credit Sale' : 'Sale',
-          customer_name: customerName || 'Walk-in',
-          balance: newBalance
-        })
+          const newBalance = (lastEntry?.balance || 0) + (paymentMethod === 'Credit' ? 0 : grandTotal)
+
+          await supabase.from('ledger').insert({
+            description: `POS Sale - ${customerName || 'Walk-in'}`,
+            ref_id: receiptNumber,
+            ref_type: 'sale',
+            credit: paymentMethod === 'Credit' ? 0 : grandTotal,
+            debit: 0,
+            transaction_type: paymentMethod === 'Credit' ? 'Credit Sale' : 'Sale',
+            customer_name: customerName || 'Walk-in',
+            balance: newBalance,
+            pharmacy_id: user?.pharmacy_id
+          })
 
         if (paymentMethod === 'Credit' && saleData) {
           await supabase.from('credits').insert({
@@ -415,7 +418,8 @@ export default function POSPage() {
             customer_name: customerName,
             total_amount: grandTotal,
             remaining_amount: grandTotal,
-            status: 'Unpaid'
+            status: 'Unpaid',
+            pharmacy_id: user?.pharmacy_id
           })
         }
 

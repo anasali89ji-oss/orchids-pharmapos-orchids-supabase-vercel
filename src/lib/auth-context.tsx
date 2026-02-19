@@ -7,7 +7,10 @@ import { useRouter, usePathname } from 'next/navigation'
 
 export interface UserRole {
   id: string
-  name: 'super_admin' | 'admin' | 'cashier'
+  name: 'super_admin' | 'pharmacy_admin' | 'manager' | 'pharmacist' | 
+        'cashier' | 'inventory_clerk' | 'accountant' | 'reporting_analyst' | 
+        'sales_representative' | 'support_agent' | 'procurement_officer' | 
+        'warehouse_supervisor' | 'delivery_coordinator'
   description: string
   permissions: Record<string, boolean>
 }
@@ -24,6 +27,7 @@ export interface AppUser {
   permissions: Record<string, boolean>
   pharmacy_id?: string
   is_pharmacy_admin?: boolean
+  is_super_admin?: boolean
 }
 
 interface AuthContextType {
@@ -40,92 +44,47 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-const PUBLIC_ROUTES = ['/login', '/forgot-password', '/reset-password']
-const SESSION_TIMEOUT_MS = 4 * 60 * 60 * 1000 // 4 hours in milliseconds
+const PUBLIC_ROUTES = ['/login', '/forgot-password', '/reset-password', '/superadmin-login']
+const SESSION_TIMEOUT_MS = 4 * 60 * 60 * 1000
 const ACTIVITY_KEY = 'pharmapos_last_activity'
 const USER_CACHE_KEY = 'pharmapos_user_cache'
 
 const ROLE_PERMISSIONS: Record<string, Record<string, boolean>> = {
-  super_admin: {
-    all: true,
-    manage_users: true,
-    manage_roles: true,
-    view_reports: true,
-    manage_settings: true,
-    process_sales: true,
-    manage_inventory: true,
-    manage_returns: true,
-    view_accounting: true,
-    export_data: true,
-    delete_data: true,
-    view_dashboard: true
+  super_admin: { all: true },
+  pharmacy_admin: { 
+    all: false, manage_users: true, view_reports: true, manage_settings: true, process_sales: true, 
+    manage_inventory: true, manage_returns: true, view_accounting: true, export_data: true, 
+    view_dashboard: true, manage_purchases: true
   },
-  admin: {
-    manage_users: false,
-    manage_roles: false,
-    view_reports: true,
-    manage_settings: true,
-    process_sales: true,
-    manage_inventory: true,
-    manage_returns: true,
-    view_accounting: true,
-    export_data: true,
-    delete_data: false,
-    view_dashboard: true
+  manager: { 
+    all: false, manage_users: true, view_reports: true, manage_settings: true, process_sales: true, 
+    manage_inventory: true, manage_returns: true, view_accounting: true, view_dashboard: true, manage_purchases: true
   },
-  cashier: {
-    manage_users: false,
-    manage_roles: false,
-    view_reports: false,
-    manage_settings: false,
-    process_sales: true,
-    manage_inventory: false,
-    manage_returns: true,
-    view_accounting: false,
-    export_data: false,
-    delete_data: false,
-    view_dashboard: false
-  }
-}
-
-const ROUTE_PERMISSIONS: Record<string, string[]> = {
-  '/dashboard': ['view_dashboard'],
-  '/pos': ['process_sales'],
-  '/held-sales': ['process_sales'],
-  '/products': ['manage_inventory'],
-  '/inventory': ['manage_inventory'],
-  '/suppliers': ['manage_inventory'],
-  '/purchases': ['manage_inventory'],
-  '/returns': ['manage_returns'],
-  '/reports': ['view_reports'],
-  '/accounting': ['view_accounting'],
-  '/receipts': ['process_sales'],
-  '/customers': ['process_sales'],
-  '/notifications': ['process_sales'],
-  '/settings': ['manage_settings'],
-  '/profile': ['process_sales'],
-  '/users': ['manage_users']
+  pharmacist: { all: false, process_sales: true, manage_products: true, view_products: true },
+  cashier: { all: false, process_sales: true, manage_returns: true, view_products: true, view_customers: true },
+  inventory_clerk: { all: false, manage_inventory: true, manage_purchases: true, manage_suppliers: true, view_products: true },
+  accountant: { all: false, view_reports: true, view_accounting: true, manage_ledger: true, manage_credits: true },
+  reporting_analyst: { all: false, view_reports: true, view_dashboard: true, export_data: true },
+  sales_representative: { all: false, process_sales: true, manage_credits: true, manage_customers: true },
+  support_agent: { all: false, process_sales: true, manage_returns: true, manage_customers: true, view_suppliers: true },
+  procurement_officer: { all: false, manage_inventory: true, manage_purchases: true, manage_suppliers: true },
+  warehouse_supervisor: { all: false, view_reports: true, manage_inventory: true },
+  delivery_coordinator: { all: false, process_sales: true, manage_customers: true }
 }
 
 function getCachedUser(): AppUser | null {
   if (typeof window === 'undefined') return null
   try {
     const cached = localStorage.getItem(USER_CACHE_KEY)
-    if (cached) {
-      return JSON.parse(cached)
-    }
-  } catch {}
-  return null
+    return cached ? JSON.parse(cached) : null
+  } catch { return null }
 }
 
 function setCachedUser(user: AppUser | null) {
   if (typeof window === 'undefined') return
   try {
-    if (user) {
-      localStorage.setItem(USER_CACHE_KEY, JSON.stringify(user))
-    } else {
-      localStorage.removeItem(USER_CACHE_KEY)
-    }
+    if (user) localStorage.setItem(USER_CACHE_KEY, JSON.stringify(user))
+    else localStorage.removeItem(USER_CACHE_KEY)
   } catch {}
 }
 
@@ -134,21 +93,16 @@ function getLastActivity(): number {
   try {
     const stored = localStorage.getItem(ACTIVITY_KEY)
     return stored ? parseInt(stored, 10) : Date.now()
-  } catch {
-    return Date.now()
-  }
+  } catch { return Date.now() }
 }
 
 function updateLastActivity() {
   if (typeof window === 'undefined') return
-  try {
-    localStorage.setItem(ACTIVITY_KEY, Date.now().toString())
-  } catch {}
+  try { localStorage.setItem(ACTIVITY_KEY, Date.now().toString()) } catch {}
 }
 
 function isSessionExpired(): boolean {
-  const lastActivity = getLastActivity()
-  return Date.now() - lastActivity > SESSION_TIMEOUT_MS
+  return Date.now() - getLastActivity() > SESSION_TIMEOUT_MS
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -163,52 +117,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchUserProfile = useCallback(async (authUser: User): Promise<AppUser | null> => {
     try {
-      const { data: profile } = await supabase
-        .from('users')
+      const { data: superAdminData } = await supabase
+        .from('super_admins')
         .select('*')
-        .eq('email', authUser.email)
-        .single()
+        .eq('auth_user_id', authUser.id)
+        .maybeSingle()
 
-        if (profile) {
-          const role = profile.role || 'cashier'
-          const permissions = ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.cashier
-
-          const appUser: AppUser = {
-            id: profile.id,
-            email: profile.email,
-            name: profile.name || authUser.email?.split('@')[0] || 'User',
-            role: role,
-            role_id: profile.role_id,
-            phone: profile.phone,
-            avatar_url: profile.avatar_url,
-            status: profile.status || 'active',
-            permissions,
-            pharmacy_id: profile.pharmacy_id,
-            is_pharmacy_admin: profile.is_pharmacy_admin || false
-          }
+      if (superAdminData) {
+        const appUser: AppUser = {
+          id: superAdminData.id,
+          email: superAdminData.email,
+          name: superAdminData.name || 'Super Admin',
+          role: 'super_admin',
+          status: superAdminData.status || 'active',
+          permissions: ROLE_PERMISSIONS.super_admin,
+          is_super_admin: true
+        }
         setCachedUser(appUser)
         return appUser
       }
 
-        const { data: newUser } = await supabase
-          .from('users')
-          .insert({
-            email: authUser.email,
-            name: authUser.email?.split('@')[0] || 'User',
-            role: 'cashier'
-          })
-          .select()
-          .single()
+      const { data: userData } = await supabase
+        .from('users')
+        .select('*')
+        .eq('auth_user_id', authUser.id)
+        .maybeSingle()
 
-        if (newUser) {
-          const appUser: AppUser = {
-            id: newUser.id,
-            email: newUser.email,
-            name: newUser.name,
-            role: 'cashier',
-            status: 'active',
-            permissions: ROLE_PERMISSIONS.cashier
-          }
+      if (userData) {
+        const role = userData.role || 'cashier'
+        const permissions = ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.cashier
+
+        const appUser: AppUser = {
+          id: userData.id,
+          email: userData.email,
+          name: userData.name || authUser.email?.split('@')[0] || 'User',
+          role: role,
+          role_id: userData.role_id,
+          phone: userData.phone,
+          avatar_url: userData.avatar_url,
+          status: userData.status || 'active',
+          permissions,
+          pharmacy_id: userData.pharmacy_id,
+          is_pharmacy_admin: userData.is_pharmacy_admin || false,
+          is_super_admin: false
+        }
         setCachedUser(appUser)
         return appUser
       }
@@ -219,6 +171,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return null
     }
   }, [supabase])
+
+  const hasPermission = useCallback((permission: string): boolean => {
+    if (!user) return false
+    if (user.permissions.all) return true
+    return user.permissions[permission] === true
+  }, [user])
+
+  const isRole = useCallback((role: string | string[]): boolean => {
+    if (!user) return false
+    if (Array.isArray(role)) return role.includes(user.role)
+    return user.role === role
+  }, [user])
 
   const refreshUser = useCallback(async () => {
     const { data: { session: currentSession } } = await supabase.auth.getSession()
@@ -250,11 +214,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         const { data: { session: currentSession } } = await supabase.auth.getSession()
-        
+
         if (currentSession?.user) {
           setSession(currentSession)
           updateLastActivity()
-          
+
           const cachedUser = getCachedUser()
           if (cachedUser && cachedUser.email === currentSession.user.email) {
             setUser(cachedUser)
@@ -280,32 +244,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       setSession(newSession)
-      
+
       if (event === 'SIGNED_IN' && newSession?.user) {
         updateLastActivity()
         const profile = await fetchUserProfile(newSession.user)
         setUser(profile)
-        
-        supabase
-          .from('users')
-          .update({ last_login: new Date().toISOString() })
-          .eq('email', newSession.user.email)
       } else if (event === 'SIGNED_OUT') {
         setCachedUser(null)
         setUser(null)
-        router.push('/login')
       }
     })
 
-    return () => subscription.unsubscribe()
-  }, [supabase, fetchUserProfile, router, forceSignOut])
+      return () => subscription.unsubscribe()
+    }, [supabase, fetchUserProfile, router, forceSignOut])
 
-  useEffect(() => {
-    const trackActivity = () => {
-      updateLastActivity()
-    }
+    useEffect(() => {
+      if (typeof window === 'undefined') return
 
-      const events = ['mousedown', 'keydown', 'touchstart', 'scroll', 'click', 'pointermove']
+      const trackActivity = () => updateLastActivity()
+      const events = ['mousedown', 'keydown', 'touchstart', 'scroll', 'click', 'pointermove', 'focus']
       events.forEach(event => window.addEventListener(event, trackActivity, { passive: true }))
 
       activityTimerRef.current = setInterval(() => {
@@ -314,51 +271,80 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }, 300000)
 
-      return () => {
-        events.forEach(event => window.removeEventListener(event, trackActivity))
-        if (activityTimerRef.current) {
-          clearInterval(activityTimerRef.current)
+      const handleVisibilityChange = () => {
+        if (!document.hidden && session) {
+          supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+            if (currentSession) {
+              supabase.auth.refreshSession()
+              updateLastActivity()
+            }
+          })
         }
       }
-    }, [session, forceSignOut])
+
+      document.addEventListener('visibilitychange', handleVisibilityChange)
+
+      return () => {
+        events.forEach(event => window.removeEventListener(event, trackActivity))
+        document.removeEventListener('visibilitychange', handleVisibilityChange)
+        if (activityTimerRef.current) clearInterval(activityTimerRef.current)
+      }
+    }, [session, forceSignOut, supabase])
 
     useEffect(() => {
       if (!session) return
 
       const refreshInterval = setInterval(async () => {
-        const { data: { session: currentSession } } = await supabase.auth.getSession()
-        if (currentSession) {
-          await supabase.auth.refreshSession()
-          updateLastActivity()
+        try {
+          const { data: { session: currentSession } } = await supabase.auth.getSession()
+          if (currentSession) {
+            const { error } = await supabase.auth.refreshSession()
+            if (error) {
+              console.error('Session refresh error:', error)
+            } else {
+              updateLastActivity()
+            }
+          }
+        } catch (error) {
+          console.error('Session refresh failed:', error)
         }
       }, 10 * 60 * 1000)
 
-      return () => clearInterval(refreshInterval)
+      const proactiveRefreshInterval = setInterval(() => {
+        const inactiveTime = Date.now() - getLastActivity()
+        if (inactiveTime > 5 * 60 * 1000 && inactiveTime < SESSION_TIMEOUT_MS) {
+          supabase.auth.refreshSession().catch(console.error)
+        }
+      }, 60 * 1000)
+
+      return () => {
+        clearInterval(refreshInterval)
+        clearInterval(proactiveRefreshInterval)
+      }
     }, [session, supabase])
 
-    useEffect(() => {
-      if (loading) return
+  useEffect(() => {
+    if (loading) return
 
     const isPublicRoute = PUBLIC_ROUTES.some(route => pathname?.startsWith(route))
 
     if (!session && !isPublicRoute) {
-      router.push('/login')
+      if (pathname?.startsWith('/superadmin')) {
+        router.push('/superadmin-login')
+      } else {
+        router.push('/login')
+      }
       return
     }
 
     if (session && user && !isPublicRoute) {
-      const requiredPermissions = ROUTE_PERMISSIONS[pathname || '']
-      
-      if (requiredPermissions) {
-        const hasAccess = requiredPermissions.some(perm => hasPermission(perm))
-        
-        if (!hasAccess) {
-          if (user.permissions.process_sales) {
-            router.push('/pos')
-          } else {
-            router.push('/login')
-          }
-        }
+      if (pathname?.startsWith('/superadmin') && !user.is_super_admin) {
+        router.push('/login')
+        return
+      }
+
+      if (!pathname?.startsWith('/superadmin') && user.is_super_admin) {
+        return
       }
     }
   }, [loading, session, user, pathname, router])
@@ -366,11 +352,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string) => {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
-      
-      if (error) {
-        return { error: new Error(error.message) }
-      }
-
+      if (error) return { error: new Error(error.message) }
       updateLastActivity()
       return { error: null }
     } catch (error) {
@@ -390,29 +372,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updatePassword = async (newPassword: string) => {
     try {
       const { error } = await supabase.auth.updateUser({ password: newPassword })
-      
-      if (error) {
-        return { error: new Error(error.message) }
-      }
-
+      if (error) return { error: new Error(error.message) }
       return { error: null }
     } catch (error) {
       return { error: error as Error }
     }
-  }
-
-  const hasPermission = (permission: string): boolean => {
-    if (!user) return false
-    if (user.permissions.all) return true
-    return user.permissions[permission] === true
-  }
-
-  const isRole = (role: string | string[]): boolean => {
-    if (!user) return false
-    if (Array.isArray(role)) {
-      return role.includes(user.role)
-    }
-    return user.role === role
   }
 
   return (
@@ -434,9 +398,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider')
-  }
+  if (context === undefined) throw new Error('useAuth must be used within an AuthProvider')
   return context
 }
 
@@ -445,9 +407,7 @@ export function useRequireAuth() {
   const router = useRouter()
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login')
-    }
+    if (!loading && !user) router.push('/login')
   }, [user, loading, router])
 
   return { user, loading }
@@ -458,9 +418,7 @@ export function useRequirePermission(permission: string) {
   const router = useRouter()
 
   useEffect(() => {
-    if (!loading && user && !hasPermission(permission)) {
-      router.push('/pos')
-    }
+    if (!loading && user && !hasPermission(permission)) router.push('/pos')
   }, [loading, user, permission, hasPermission, router])
 
   return { hasPermission: hasPermission(permission), loading }
