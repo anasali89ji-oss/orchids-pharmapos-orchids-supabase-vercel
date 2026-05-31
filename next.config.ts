@@ -63,4 +63,3 @@ const LOADER = path.resolve(__dirname, 'src/visual-edits/component-tagger-loader
   };
 
 export default nextConfig;
-// Orchids restart: 1771477355312
