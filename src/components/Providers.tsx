@@ -7,6 +7,7 @@ import { SuperAdminProvider } from '@/lib/superadmin-context'
 import { PharmacyProvider } from '@/lib/pharmacy-context'
 import { useEffect, useState } from 'react'
 import { startAutoSync, refreshProductCache } from '@/lib/sync-service'
+import { useDbKeepalive } from '@/hooks/use-db-keepalive'
 import { Loader2 } from 'lucide-react'
 
 function OfflineIndicator() {
@@ -53,6 +54,12 @@ function SyncManager() {
   return null
 }
 
+// DB keepalive — pings Supabase every 4 min when user is idle to prevent connection drop
+function DbKeepalive() {
+  useDbKeepalive()
+  return null
+}
+
 // Bug 18 fix: AuthGate ensures PharmacyProvider never renders before AuthProvider resolves
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { loading } = useAuth()
@@ -79,6 +86,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <SuperAdminProvider>
             <PharmacyProvider>
               <SyncManager />
+              <DbKeepalive />
               <OfflineIndicator />
               {children}
               <Toaster
