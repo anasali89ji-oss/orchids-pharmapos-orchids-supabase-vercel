@@ -97,10 +97,12 @@ export async function POST(request: NextRequest) {
       .from('users')
       .insert({
         id: authData.user?.id,
+        auth_user_id: authData.user?.id,
         pharmacy_id,
         email,
         name,
         role,
+        status: 'active',
         is_active: true,
       })
       .select()

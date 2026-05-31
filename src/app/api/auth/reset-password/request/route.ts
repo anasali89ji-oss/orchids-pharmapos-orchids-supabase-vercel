@@ -63,8 +63,11 @@ export async function POST(request: NextRequest) {
 
     // Send reset email via Supabase Auth
     const { error: authError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'magiclink',
+      type: 'recovery',
       email,
+      options: {
+        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/reset-password`,
+      }
     })
 
     if (authError) {

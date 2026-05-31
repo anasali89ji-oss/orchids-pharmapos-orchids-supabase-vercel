@@ -49,7 +49,6 @@ export async function GET(request: NextRequest) {
           .upsert({
             pharmacy_id: pharmacy.id,
             last_backup: new Date().toISOString(),
-            backup_count: (supabaseAdmin.from('backup_schedules').select('*', { count: 'exact', head: true }) as any).then(res => res.count || 0) + 1,
             status: 'completed'
           }, { onConflict: 'pharmacy_id' })
 

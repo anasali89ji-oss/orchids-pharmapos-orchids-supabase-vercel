@@ -1,5 +1,5 @@
 import 'server-only'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { logger } from '@/lib/logger'
 import { rateLimit } from '@/lib/rate-limit'
@@ -13,9 +13,9 @@ const TIER_PRICES: Record<string, number> = {
   enterprise: 24999,
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const rateLimitResult = await rateLimit(request as any, {
+    const rateLimitResult = await rateLimit(request, {
       interval: 3600000, // 1 hour
       maxRequests: 20,
     })
