@@ -2,15 +2,16 @@
 
 import { ThemeProvider } from 'next-themes'
 import { Toaster } from 'sonner'
-import { AuthProvider } from '@/lib/auth-context'
+import { AuthProvider, useAuth } from '@/lib/auth-context'
 import { SuperAdminProvider } from '@/lib/superadmin-context'
 import { PharmacyProvider } from '@/lib/pharmacy-context'
 import { useEffect, useState } from 'react'
 import { startAutoSync, refreshProductCache } from '@/lib/sync-service'
+import { Loader2 } from 'lucide-react'
 
 function OfflineIndicator() {
   const [isOnline, setIsOnline] = useState(true)
-  const [pendingSync, setPendingSync] = useState(0)
+  const [pendingSync] = useState(0)
 
   useEffect(() => {
     setIsOnline(navigator.onLine)
@@ -52,27 +53,47 @@ function SyncManager() {
   return null
 }
 
+// Bug 18 fix: AuthGate ensures PharmacyProvider never renders before AuthProvider resolves
+function AuthGate({ children }: { children: React.ReactNode }) {
+  const { loading } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-muted-foreground text-sm">Loading PharmaPOS...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return <>{children}</>
+}
+
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
       <AuthProvider>
-        <SuperAdminProvider>
-          <PharmacyProvider>
-            <SyncManager />
-            <OfflineIndicator />
-            {children}
-            <Toaster
-              position="top-right"
-              richColors
-              closeButton
-              toastOptions={{
-                style: {
-                  borderRadius: '12px',
-                }
-              }}
-            />
-          </PharmacyProvider>
-        </SuperAdminProvider>
+        <AuthGate>
+          <SuperAdminProvider>
+            <PharmacyProvider>
+              <SyncManager />
+              <OfflineIndicator />
+              {children}
+              <Toaster
+                position="top-right"
+                richColors
+                closeButton
+                toastOptions={{
+                  style: {
+                    borderRadius: '12px',
+                  }
+                }}
+              />
+            </PharmacyProvider>
+          </SuperAdminProvider>
+        </AuthGate>
       </AuthProvider>
     </ThemeProvider>
   )

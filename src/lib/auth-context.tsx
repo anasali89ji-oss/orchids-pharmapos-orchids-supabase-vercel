@@ -7,9 +7,9 @@ import { useRouter, usePathname } from 'next/navigation'
 
 export interface UserRole {
   id: string
-  name: 'super_admin' | 'pharmacy_admin' | 'manager' | 'pharmacist' | 
-        'cashier' | 'inventory_clerk' | 'accountant' | 'reporting_analyst' | 
-        'sales_representative' | 'support_agent' | 'procurement_officer' | 
+  name: 'super_admin' | 'pharmacy_admin' | 'manager' | 'pharmacist' |
+        'cashier' | 'inventory_clerk' | 'accountant' | 'reporting_analyst' |
+        'sales_representative' | 'support_agent' | 'procurement_officer' |
         'warehouse_supervisor' | 'delivery_coordinator'
   description: string
   permissions: Record<string, boolean>
@@ -51,13 +51,13 @@ const USER_CACHE_KEY = 'pharmapos_user_cache'
 
 const ROLE_PERMISSIONS: Record<string, Record<string, boolean>> = {
   super_admin: { all: true },
-  pharmacy_admin: { 
-    all: false, manage_users: true, view_reports: true, manage_settings: true, process_sales: true, 
-    manage_inventory: true, manage_returns: true, view_accounting: true, export_data: true, 
+  pharmacy_admin: {
+    all: false, manage_users: true, view_reports: true, manage_settings: true, process_sales: true,
+    manage_inventory: true, manage_returns: true, view_accounting: true, export_data: true,
     view_dashboard: true, manage_purchases: true
   },
-  manager: { 
-    all: false, manage_users: true, view_reports: true, manage_settings: true, process_sales: true, 
+  manager: {
+    all: false, manage_users: true, view_reports: true, manage_settings: true, process_sales: true,
     manage_inventory: true, manage_returns: true, view_accounting: true, view_dashboard: true, manage_purchases: true
   },
   pharmacist: { all: false, process_sales: true, manage_products: true, view_products: true },
@@ -111,8 +111,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const router = useRouter()
   const pathname = usePathname()
-  const supabase = createClient()
+
+  // Bug 12 fix: singleton client — never recreated on re-render
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null)
+  if (!supabaseRef.current) {
+    supabaseRef.current = createClient()
+  }
+  const supabase = supabaseRef.current
+
   const activityTimerRef = useRef<NodeJS.Timeout | null>(null)
+  // Bug 14 fix: StrictMode guard
   const initialized = useRef(false)
 
   const fetchUserProfile = useCallback(async (authUser: User): Promise<AppUser | null> => {
@@ -201,9 +209,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/login')
   }, [supabase, router])
 
+  // Bug 14 fix: abortController prevents StrictMode double-run side-effects
+  // Bug 12 fix: empty deps — supabase is stable ref, never triggers re-run
   useEffect(() => {
     if (initialized.current) return
     initialized.current = true
+
+    const abortController = new AbortController()
 
     const initAuth = async () => {
       try {
@@ -224,105 +236,107 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(cachedUser)
             setLoading(false)
             fetchUserProfile(currentSession.user).then(profile => {
-              if (profile) setUser(profile)
+              if (profile && !abortController.signal.aborted) setUser(profile)
             })
           } else {
             const profile = await fetchUserProfile(currentSession.user)
-            setUser(profile)
-            setLoading(false)
+            if (!abortController.signal.aborted) {
+              setUser(profile)
+              setLoading(false)
+            }
           }
         } else {
-          setLoading(false)
+          if (!abortController.signal.aborted) setLoading(false)
         }
       } catch (error) {
         console.error('Auth init error:', error)
-        setLoading(false)
+        if (!abortController.signal.aborted) setLoading(false)
       }
     }
 
     initAuth()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      if (abortController.signal.aborted) return
       setSession(newSession)
 
       if (event === 'SIGNED_IN' && newSession?.user) {
         updateLastActivity()
         const profile = await fetchUserProfile(newSession.user)
-        setUser(profile)
+        if (!abortController.signal.aborted) setUser(profile)
       } else if (event === 'SIGNED_OUT') {
         setCachedUser(null)
         setUser(null)
       }
     })
 
-      return () => subscription.unsubscribe()
-    }, [supabase, fetchUserProfile, router, forceSignOut])
+    return () => {
+      abortController.abort()
+      subscription.unsubscribe()
+    }
+  }, []) // EMPTY deps — supabase is a stable ref, fetchUserProfile & forceSignOut captured via closure
 
-    useEffect(() => {
-      if (typeof window === 'undefined') return
+  // Activity tracking + session expiry check
+  useEffect(() => {
+    if (typeof window === 'undefined') return
 
-      const trackActivity = () => updateLastActivity()
-      const events = ['mousedown', 'keydown', 'touchstart', 'scroll', 'click', 'pointermove', 'focus']
-      events.forEach(event => window.addEventListener(event, trackActivity, { passive: true }))
+    const trackActivity = () => updateLastActivity()
+    const events = ['mousedown', 'keydown', 'touchstart', 'scroll', 'click', 'pointermove', 'focus']
+    events.forEach(event => window.addEventListener(event, trackActivity, { passive: true }))
 
-      activityTimerRef.current = setInterval(() => {
-        if (session && isSessionExpired()) {
-          forceSignOut()
-        }
-      }, 300000)
-
-      const handleVisibilityChange = () => {
-        if (!document.hidden && session) {
-          supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-            if (currentSession) {
-              supabase.auth.refreshSession()
-              updateLastActivity()
-            }
-          })
-        }
+    activityTimerRef.current = setInterval(() => {
+      if (session && isSessionExpired()) {
+        forceSignOut()
       }
+    }, 300000)
 
-      document.addEventListener('visibilitychange', handleVisibilityChange)
-
-      return () => {
-        events.forEach(event => window.removeEventListener(event, trackActivity))
-        document.removeEventListener('visibilitychange', handleVisibilityChange)
-        if (activityTimerRef.current) clearInterval(activityTimerRef.current)
-      }
-    }, [session, forceSignOut, supabase])
-
-    useEffect(() => {
-      if (!session) return
-
-      const refreshInterval = setInterval(async () => {
-        try {
-          const { data: { session: currentSession } } = await supabase.auth.getSession()
+    const handleVisibilityChange = () => {
+      if (!document.hidden && session) {
+        supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
           if (currentSession) {
-            const { error } = await supabase.auth.refreshSession()
-            if (error) {
-              console.error('Session refresh error:', error)
-            } else {
-              updateLastActivity()
-            }
+            supabase.auth.refreshSession()
+            updateLastActivity()
           }
-        } catch (error) {
-          console.error('Session refresh failed:', error)
-        }
-      }, 10 * 60 * 1000)
-
-      const proactiveRefreshInterval = setInterval(() => {
-        const inactiveTime = Date.now() - getLastActivity()
-        if (inactiveTime > 5 * 60 * 1000 && inactiveTime < SESSION_TIMEOUT_MS) {
-          supabase.auth.refreshSession().catch(console.error)
-        }
-      }, 60 * 1000)
-
-      return () => {
-        clearInterval(refreshInterval)
-        clearInterval(proactiveRefreshInterval)
+        })
       }
-    }, [session, supabase])
+    }
 
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      events.forEach(event => window.removeEventListener(event, trackActivity))
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      if (activityTimerRef.current) clearInterval(activityTimerRef.current)
+    }
+  }, [session, forceSignOut, supabase])
+
+  // Bug 13 fix: single refresh interval — proactiveRefreshInterval removed
+  useEffect(() => {
+    if (!session) return
+
+    const refreshInterval = setInterval(async () => {
+      try {
+        const { data: { session: currentSession } } = await supabase.auth.getSession()
+        if (!currentSession) {
+          await forceSignOut()
+          return
+        }
+        const { error } = await supabase.auth.refreshSession()
+        if (error) {
+          console.error('Session refresh error:', error)
+          await forceSignOut()
+        } else {
+          updateLastActivity()
+        }
+      } catch (error) {
+        console.error('Session refresh failed:', error)
+      }
+    }, 10 * 60 * 1000) // Single interval: 10 minutes
+
+    return () => clearInterval(refreshInterval)
+  }, [session, supabase, forceSignOut])
+
+  // Route guard
   useEffect(() => {
     if (loading) return
 
@@ -340,10 +354,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (session && user && !isPublicRoute) {
       if (pathname?.startsWith('/superadmin') && !user.is_super_admin) {
         router.push('/login')
-        return
-      }
-
-      if (!pathname?.startsWith('/superadmin') && user.is_super_admin) {
         return
       }
     }

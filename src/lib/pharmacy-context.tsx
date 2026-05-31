@@ -1,29 +1,29 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/auth-context'
 
 interface Pharmacy {
-    id: string
-    name: string
-    slug: string
-    status: string
-    subscription_status: string
-    plan: string
-    logo_url: string | null
-    trial_ends_at: string | null
-    max_staff_users: number | null
-    owner_email: string
-    owner_name: string
-    phone: string | null
-    city: string | null
-    country: string
-    license_number: string | null
-    is_suspended: boolean
-    subscription_tier: string
-    billing_cycle_anchor: string | null
-  }
+  id: string
+  name: string
+  slug: string
+  status: string
+  subscription_status: string
+  plan: string
+  logo_url: string | null
+  trial_ends_at: string | null
+  max_staff_users: number | null
+  owner_email: string
+  owner_name: string
+  phone: string | null
+  city: string | null
+  country: string
+  license_number: string | null
+  is_suspended: boolean
+  subscription_tier: string
+  billing_cycle_anchor: string | null
+}
 
 interface PharmacyContextType {
   pharmacy: Pharmacy | null
@@ -40,9 +40,16 @@ export function PharmacyProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const [pharmacy, setPharmacy] = useState<Pharmacy | null>(null)
   const [loading, setLoading] = useState(true)
-  const supabase = createClient()
 
-  const fetchPharmacy = async () => {
+  // Singleton client — consistent with auth/superadmin contexts
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null)
+  if (!supabaseRef.current) {
+    supabaseRef.current = createClient()
+  }
+  const supabase = supabaseRef.current
+
+  // Bug 17 fix: wrap in useCallback so useEffect dep is stable
+  const fetchPharmacy = useCallback(async () => {
     if (!user?.pharmacy_id) {
       setPharmacy(null)
       setLoading(false)
@@ -68,15 +75,15 @@ export function PharmacyProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user?.pharmacy_id, supabase])
 
-  const refreshPharmacy = async () => {
+  const refreshPharmacy = useCallback(async () => {
     await fetchPharmacy()
-  }
+  }, [fetchPharmacy])
 
   useEffect(() => {
     fetchPharmacy()
-  }, [user?.pharmacy_id])
+  }, [fetchPharmacy])
 
   const isSubscriptionActive = pharmacy?.subscription_status === 'active'
   const isTrialing = pharmacy?.subscription_status === 'trialing'
