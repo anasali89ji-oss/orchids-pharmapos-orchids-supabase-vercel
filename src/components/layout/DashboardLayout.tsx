@@ -18,7 +18,8 @@ export function DashboardLayout({ children, title, subtitle }: DashboardLayoutPr
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="lg:block">
+      {/* Desktop Sidebar — hidden on mobile (Bug 19 fix: was lg:block which doesn't hide fixed elements) */}
+      <div className="hidden lg:block">
         <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
       </div>
 

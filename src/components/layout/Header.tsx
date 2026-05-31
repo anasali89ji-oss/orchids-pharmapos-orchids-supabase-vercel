@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { FiSearch, FiMenu, FiBell, FiMoon, FiSun, FiX, FiFileText, FiSidebar } from 'react-icons/fi'
 import { useTheme } from 'next-themes'
 import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/auth-context'
 import { Product, Sale } from '@/types'
 import Link from 'next/link'
 
@@ -20,13 +21,30 @@ export function Header({ onMenuClick, onToggleSidebar, title, subtitle }: Header
   const [searchResults, setSearchResults] = useState<{ products: Product[], receipts: Sale[] }>({ products: [], receipts: [] })
   const [showResults, setShowResults] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
   const { theme, setTheme } = useTheme()
   const searchRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
+  // Bug 22 & 23 fix: pull real user data
+  const { user } = useAuth()
 
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Bug 23 fix: fetch actual unread notification count
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      if (!user?.pharmacy_id) return
+      const { count } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_read', false)
+        .eq('pharmacy_id', user.pharmacy_id)
+      setUnreadCount(count || 0)
+    }
+    fetchNotifications()
+  }, [user, supabase])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -195,10 +213,12 @@ export function Header({ onMenuClick, onToggleSidebar, title, subtitle }: Header
       <div className="flex items-center gap-2">
         <button className="relative rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
           <FiBell className="h-5 w-5" />
-          <span className="absolute right-1.5 top-1.5 flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75"></span>
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500"></span>
-          </span>
+          {unreadCount > 0 && (
+            <span className="absolute right-1.5 top-1.5 flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75"></span>
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500"></span>
+            </span>
+          )}
         </button>
 
         {mounted && (
@@ -212,11 +232,13 @@ export function Header({ onMenuClick, onToggleSidebar, title, subtitle }: Header
 
         <div className="ml-2 flex items-center gap-3">
           <div className="hidden text-right sm:block">
-            <p className="text-sm font-medium text-foreground">Pharmacy Admin</p>
-            <p className="text-xs text-muted-foreground">Administrator</p>
+            <p className="text-sm font-medium text-foreground">{user?.name || 'User'}</p>
+            <p className="text-xs text-muted-foreground capitalize">
+              {user?.role?.replace(/_/g, ' ') || 'Staff'}
+            </p>
           </div>
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
-            PA
+            {user?.name?.charAt(0)?.toUpperCase() || 'U'}
           </div>
         </div>
       </div>

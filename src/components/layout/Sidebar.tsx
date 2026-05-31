@@ -46,7 +46,7 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed = false }: SidebarProps) {
   const pathname = usePathname()
-  const { user, hasPermission, isRole, signOut } = useAuth()
+  const { user, hasPermission, isRole, signOut, loading } = useAuth()
 
   const filteredNavItems = navItems.filter(item => {
     if (!user) return false
@@ -89,7 +89,12 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
 
         <nav className="flex-1 overflow-y-auto py-4 scrollbar-thin">
           <ul className="space-y-1 px-3">
-            {filteredNavItems.map((item, index) => {
+            {loading ? (
+              Array.from({ length: 8 }).map((_, i) => (
+                <li key={i} className="mx-0 h-10 rounded-xl bg-white/10 animate-pulse" />
+              ))
+            ) : (
+            filteredNavItems.map((item, index) => {
               const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
               const Icon = item.icon
 
@@ -116,7 +121,8 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
                   </Link>
                 </motion.li>
               )
-            })}
+            })
+            )}
           </ul>
         </nav>
 
