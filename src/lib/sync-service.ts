@@ -16,7 +16,6 @@ import { toast } from 'sonner'
 const MAX_RETRIES = 3
 let isSyncing = false
 let syncInterval: ReturnType<typeof setInterval> | null = null
-let isRefreshScheduled = false
 
 export function isOnline(): boolean {
   return typeof navigator !== 'undefined' ? navigator.onLine : true
@@ -112,18 +111,11 @@ export async function syncOfflineData(): Promise<{ success: number; failed: numb
   return { success: successCount, failed: failedCount }
 }
 
-export async function refreshProductCache(): Promise<void> {
+export async function refreshProductCache(supabaseClient?: ReturnType<typeof createClient>): Promise<void> {
   if (!isOnline()) return
-
-  const supabase = createClient()
+  const supabase = supabaseClient || createClient()
 
   try {
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (!user) {
-      return
-    }
-
     const { data: products, error } = await supabase
       .from('products')
       .select('id, name, brand, generic_name, barcode, price, cost, stock, min_stock, expiry_date, status')
@@ -132,9 +124,7 @@ export async function refreshProductCache(): Promise<void> {
       .order('name')
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        return
-      }
+      if (error.code === 'PGRST116' || error.code === '401') return
       throw error
     }
 
@@ -147,16 +137,27 @@ export async function refreshProductCache(): Promise<void> {
       })))
     }
   } catch (error: any) {
-    if (error?.code === 'PGRST116' || error?.code === '401') {
-      return
-    }
-    if (!isRefreshScheduled) {
-      isRefreshScheduled = true
-      setTimeout(() => {
-        isRefreshScheduled = false
-      }, 60000)
-    }
+    console.error('Product cache refresh failed:', error)
+    scheduleCacheRetry()
   }
+}
+
+let retryTimeout: ReturnType<typeof setTimeout> | null = null
+let retryCount = 0
+const MAX_RETRY_COUNT = 5
+
+function scheduleCacheRetry() {
+  if (retryTimeout) clearTimeout(retryTimeout)
+  if (retryCount >= MAX_RETRY_COUNT) {
+    console.error('Max cache retry attempts reached')
+    retryCount = 0
+    return
+  }
+  const delay = Math.min(1000 * Math.pow(2, retryCount), 30000)
+  retryCount++
+  retryTimeout = setTimeout(() => {
+    refreshProductCache().finally(() => { retryCount = 0 })
+  }, delay)
 }
 
 export function startAutoSync(intervalMs: number = 30000): void {

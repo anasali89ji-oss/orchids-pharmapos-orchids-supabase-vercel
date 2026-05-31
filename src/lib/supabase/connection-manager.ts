@@ -1,10 +1,14 @@
-import { SupabaseClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/client'
 
 export interface RetryOptions {
   maxRetries?: number
   delayMs?: number
   onRetry?: (attempt: number, error: Error) => void
 }
+
+// Bug 25 & 26 fix: removed createSupabaseRetryWrapper, createRetryQuery, createRetryMutation
+// and the malformed type RetryQuery / RetryMutation aliases that caused TypeScript errors.
+// These wrappers broke the Supabase query builder chain and are not needed.
 
 export async function withRetry<T>(
   operation: () => Promise<T>,
@@ -37,85 +41,6 @@ export async function withRetry<T>(
   }
 
   throw lastError
-}
-
-export function createSupabaseRetryWrapper(supabase: SupabaseClient) {
-  return {
-    from: (table: string) => {
-      const originalQuery = supabase.from(table)
-
-      return {
-        select: (columns?: string) => createRetryQuery(originalQuery.select(columns)),
-        insert: (data: any) => createRetryMutation(originalQuery.insert(data)),
-        update: (data: any) => createRetryMutation(originalQuery.update(data)),
-        delete: () => createRetryMutation(originalQuery.delete()),
-      }
-    }
-  }
-}
-
-type RetryQuery = ReturnType<SupabaseClient['from']>['select extends Record<string, unknown>>
-type RetryMutation = ReturnType<SupabaseClient['from']>['insert']
-
-function createRetryQuery(query: any) {
-  const retryableExecute = async () => {
-    let lastError: Error | null = null
-    
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        return await query
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error))
-        
-        if (attempt < 3) {
-          await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
-        }
-      }
-    }
-    
-    throw lastError
-  }
-
-  return {
-    ...query,
-    then: <T>(onFulfilled?: (value: T) => T | PromiseLike<T>, onRejected?: (reason: any) => T | PromiseLike<T>) => {
-      return retryableExecute().then(onFulfilled, onRejected)
-    },
-    single: () => withRetry(() => query.single()),
-    maybeSingle: () => withRetry(() => query.maybeSingle()),
-  }
-}
-
-function createRetryMutation(mutation: any) {
-  const retryableExecute = async () => {
-    let lastError: Error | null = null
-    
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        return await mutation
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error))
-        
-        if (attempt < 3) {
-          const delay = 1000 * attempt
-          await new Promise(resolve => setTimeout(resolve, delay))
-        }
-      }
-    }
-    
-    throw lastError
-  }
-
-  return {
-    ...mutation,
-    then: <T>(onFulfilled?: (value: T) => T | PromiseLike<T>, onRejected?: (reason: any) => T | PromiseLike<T>) => {
-      return retryableExecute().then(onFulfilled, onRejected)
-    },
-    select: (columns?: string) => createRetryMutation(mutation.select(columns)),
-    eq: (column: string, value: any) => createRetryMutation(mutation.eq(column, value)),
-    single: () => withRetry(() => mutation.single()),
-    maybeSingle: () => withRetry(() => mutation.maybeSingle()),
-  }
 }
 
 export function handleSupabaseError(error: any): string {
@@ -195,14 +120,23 @@ export class ConnectionManager {
     })
   }
 
+  // Bug 27 fix: heartbeat now actually pings DB instead of dispatching an ignored event
   private startHeartbeat() {
-    this.heartbeatInterval = setInterval(() => {
+    this.heartbeatInterval = setInterval(async () => {
       const inactiveTime = Date.now() - this.lastActivity
-      
-      if (inactiveTime > 5 * 60 * 1000) {
-        document.dispatchEvent(new CustomEvent('proactive-refresh-needed'))
+      if (inactiveTime > 5 * 60 * 1000 && this.isOnline) {
+        await this.sendHeartbeat()
       }
     }, 60000)
+  }
+
+  private async sendHeartbeat() {
+    try {
+      const supabase = createClient()
+      await supabase.from('pharmacies').select('id').limit(1)
+    } catch {
+      // silent fail — heartbeat is best-effort
+    }
   }
 
   private updateActivity() {

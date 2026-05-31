@@ -1,6 +1,10 @@
 /**
  * Rate Limiting Middleware
  * Prevents abuse and protects against DDoS attacks
+ *
+ * ⚠️ WARNING: This rate limiter uses in-memory Map storage.
+ * In Vercel's serverless environment, each cold start resets this Map.
+ * For production rate limiting, integrate Upstash Redis or similar.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -22,8 +26,9 @@ export function getClientIdentifier(request: NextRequest): string {
   const userId = request.headers.get('x-user-id')
   if (userId) return `user:${userId}`
 
-  const ip = request.headers.get('x-forwarded-for') ||
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
              request.headers.get('x-real-ip') ||
+             request.headers.get('cf-connecting-ip') ||
              'unknown'
   return `ip:${ip}`
 }
