@@ -33,11 +33,11 @@ export default function LoginPage() {
         }
 
         if (data.session) {
-          // Check if it's a super admin
+          // Check if it's a super admin — query by auth_user_id (Bug 7.2 fix)
           const { data: superAdmin } = await supabase
             .from('super_admins')
             .select('id, status')
-            .eq('email', email)
+            .eq('auth_user_id', data.session.user.id)
             .maybeSingle()
 
           if (superAdmin && superAdmin.status === 'active') {
@@ -46,11 +46,11 @@ export default function LoginPage() {
             return
           }
 
-          // Check regular user
+          // Check regular user — query by auth_user_id (Bug 7.2 fix)
           const { data: profile } = await supabase
             .from('users')
             .select('role, status')
-            .eq('email', email)
+            .eq('auth_user_id', data.session.user.id)
             .maybeSingle()
 
           if (profile?.status === 'inactive') {

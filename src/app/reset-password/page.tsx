@@ -16,11 +16,13 @@ export default function ResetPasswordPage() {
   const router = useRouter()
   const supabase = createClient()
 
+  const [sessionReady, setSessionReady] = useState(false)
+
   useEffect(() => {
-    // Supabase handles the token exchange automatically via the URL hash
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        // User arrived from password reset email
+    // Bug 7.3 fix: block the form until PASSWORD_RECOVERY event confirms the reset token is valid
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' && session) {
+        setSessionReady(true)
       }
     })
 
@@ -65,6 +67,16 @@ export default function ResetPasswordPage() {
   }
 
   return (
+    <>
+    {!sessionReady && (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <p className="text-muted-foreground">Verifying reset link...</p>
+        </div>
+      </div>
+    )}
+    {sessionReady && (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
@@ -168,5 +180,7 @@ export default function ResetPasswordPage() {
         </p>
       </div>
     </div>
+    )}
+    </>
   )
 }

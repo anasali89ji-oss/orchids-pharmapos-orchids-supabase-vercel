@@ -16,7 +16,7 @@ export default function Home() {
         const { data: profile } = await supabase
           .from('users')
           .select('role')
-          .eq('email', session.user.email)
+          .eq('auth_user_id', session.user.id)
           .single()
 
         if (profile?.role === 'cashier') {
