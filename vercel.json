@@ -40,7 +40,7 @@
   "crons": [
     { "path": "/api/backup/daily", "schedule": "0 2 * * *" },
     { "path": "/api/cron/session-cleanup", "schedule": "0 3 * * *" },
-    { "path": "/api/cron/connection-ping", "schedule": "*/4 * * * *" },
-    { "path": "/api/cron/db-keepalive", "schedule": "*/4 * * * *" }
+    { "path": "/api/cron/connection-ping", "schedule": "0 4 * * *" },
+    { "path": "/api/cron/db-keepalive", "schedule": "0 5 * * *" }
   ]
 }
