@@ -1,8 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode, useRef } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { useAuth } from '@/lib/auth-context'
+import { createContext, useContext, ReactNode } from 'react'
 
 interface Pharmacy {
   id: string
@@ -34,65 +32,40 @@ interface PharmacyContextType {
   refreshPharmacy: () => Promise<void>
 }
 
+// Bypass pharmacy — subscription always active
+const BYPASS_PHARMACY: Pharmacy = {
+  id: 'bypass-pharmacy-id',
+  name: 'Orchids Pharmacy',
+  slug: 'orchids-pharmacy',
+  status: 'active',
+  subscription_status: 'active',
+  plan: 'pro',
+  logo_url: null,
+  trial_ends_at: null,
+  max_staff_users: 50,
+  owner_email: 'admin@pharmapos.com',
+  owner_name: 'Admin',
+  phone: null,
+  city: null,
+  country: 'Pakistan',
+  license_number: null,
+  is_suspended: false,
+  subscription_tier: 'pro',
+  billing_cycle_anchor: null,
+}
+
 const PharmacyContext = createContext<PharmacyContextType | undefined>(undefined)
 
 export function PharmacyProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth()
-  const [pharmacy, setPharmacy] = useState<Pharmacy | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  // Singleton client — consistent with auth/superadmin contexts
-  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null)
-  if (!supabaseRef.current) {
-    supabaseRef.current = createClient()
-  }
-  const supabase = supabaseRef.current
-
-  // Bug 17 fix: wrap in useCallback so useEffect dep is stable
-  const fetchPharmacy = useCallback(async () => {
-    if (!user?.pharmacy_id) {
-      setPharmacy(null)
-      setLoading(false)
-      return
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('pharmacies')
-        .select('*')
-        .eq('id', user.pharmacy_id)
-        .single()
-
-      if (error) {
-        console.error('Error fetching pharmacy:', error)
-        setPharmacy(null)
-      } else {
-        setPharmacy(data)
-      }
-    } catch (error) {
-      console.error('Error fetching pharmacy:', error)
-      setPharmacy(null)
-    } finally {
-      setLoading(false)
-    }
-  }, [user?.pharmacy_id, supabase])
-
-  const refreshPharmacy = useCallback(async () => {
-    await fetchPharmacy()
-  }, [fetchPharmacy])
-
-  useEffect(() => {
-    fetchPharmacy()
-  }, [fetchPharmacy])
-
-  const isSubscriptionActive = pharmacy?.subscription_status === 'active'
-  const isTrialing = pharmacy?.subscription_status === 'trialing'
-  const daysLeftInTrial = pharmacy?.trial_ends_at
-    ? Math.max(0, Math.ceil((new Date(pharmacy.trial_ends_at).getTime() - Date.now()) / 86400000))
-    : null
-
   return (
-    <PharmacyContext.Provider value={{ pharmacy, loading, isSubscriptionActive, isTrialing, daysLeftInTrial, refreshPharmacy }}>
+    <PharmacyContext.Provider value={{
+      pharmacy: BYPASS_PHARMACY,
+      loading: false,
+      isSubscriptionActive: true,
+      isTrialing: false,
+      daysLeftInTrial: null,
+      refreshPharmacy: async () => {},
+    }}>
       {children}
     </PharmacyContext.Provider>
   )

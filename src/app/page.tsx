@@ -2,35 +2,13 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 
 export default function Home() {
   const router = useRouter()
-  const supabase = createClient()
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (session) {
-        const { data: profile } = await supabase
-          .from('users')
-          .select('role')
-          .eq('auth_user_id', session.user.id)
-          .single()
-
-        if (profile?.role === 'cashier') {
-          router.replace('/pos')
-        } else {
-          router.replace('/dashboard')
-        }
-      } else {
-        router.replace('/login')
-      }
-    }
-
-    checkAuth()
-  }, [router, supabase])
+    router.replace('/dashboard')
+  }, [router])
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 via-white to-blue-50">
