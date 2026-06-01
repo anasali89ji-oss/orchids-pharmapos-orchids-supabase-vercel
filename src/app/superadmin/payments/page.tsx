@@ -12,7 +12,7 @@ import {
   FiXCircle,
   FiClock,
   FiCalendar,
-  FiBuilding2,
+  FiBriefcase,
   FiDatabase,
   FiMoreVertical,
   FiEye
@@ -415,7 +415,7 @@ export default function PaymentsPage() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="h-8 w-8 rounded-lg bg-indigo-100 flex items-center justify-center">
-                          <FiBuilding2 className="h-4 w-4 text-indigo-600" />
+                          <FiBriefcase className="h-4 w-4 text-indigo-600" />
                         </div>
                         <div>
                           <p className="text-sm font-medium text-gray-900">

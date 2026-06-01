@@ -10,8 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { format } from 'date-fns'
 import { isOnline } from '@/lib/sync-service'
 import { getOfflineReturns, saveOfflineReturn, updateCachedProductStock } from '@/lib/offline-db'
-import { generateReturnReceipt } from '@/lib/receipts'
-import jsPDF from 'jspdf'
+import { generateReturnReceiptPdf } from '@/lib/receipts'
 
 export default function ReturnsPage() {
   const [returns, setReturns] = useState<Return[]>([])
@@ -144,18 +143,34 @@ export default function ReturnsPage() {
     }
 
   const printReturnReceipt = async (ret: Return) => {
-    const doc = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: [80, 150]
-    })
-    await generateReturnReceipt(doc, ret as any, {
-      storeName: 'PharmaPOS',
-      storeAddress: 'Healthcare Street',
-      storePhone: '+92-300-1234567'
+    const doc = generateReturnReceiptPdf({
+      pharmacy: {
+        name: 'PharmaPOS',
+        address: 'Healthcare Street',
+        phone: '+92-300-1234567'
+      },
+      returnRecord: {
+        id: ret.id,
+        return_date: ret.created_at || new Date().toISOString(),
+        return_type: 'refund',
+        original_sale_id: ret.sale_id || '',
+        customer_name: ret.customer_name || null,
+        subtotal: ret.refund_amount || 0,
+        tax: 0,
+        refund_amount: ret.refund_amount || 0,
+        notes: ret.reason || null,
+        processed_by: ret.processed_by || 'Staff'
+      },
+      items: (ret.items || []).map((item: any) => ({
+        product_name: item.product_name || item.name || '',
+        quantity: item.quantity || 0,
+        price: item.price || 0,
+        total: (item.quantity || 0) * (item.price || 0),
+        reason: ret.reason || ''
+      }))
     })
     doc.autoPrint()
-    doc.output('print')
+    doc.output('dataurlnewwindow')
   }
 
   return (

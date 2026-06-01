@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import {
-  FiBuilding2,
+  FiBriefcase,
   FiPlus,
   FiSearch,
   FiFilter,
@@ -273,7 +273,7 @@ export default function PharmaciesPage() {
           </div>
         ) : filteredPharmacies.length === 0 ? (
           <div className="p-12 text-center">
-            <FiBuilding2 className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+            <FiBriefcase className="h-12 w-12 text-gray-300 mx-auto mb-4" />
             <p className="text-gray-500">No pharmacies found</p>
             <button
               onClick={() => setShowAddModal(true)}
