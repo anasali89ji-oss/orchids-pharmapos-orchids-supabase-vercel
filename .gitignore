@@ -40,3 +40,4 @@ next-env.d.ts
 # Environment files - NEVER commit these
 .env.local
 .env.*.local
+.vercel
