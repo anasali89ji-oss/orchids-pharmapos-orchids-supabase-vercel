@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     )
 
     if (authError) {
-      logger.error('Failed to update password', authError, { user_id })
+      logger.error('Failed to update password', new Error(authError.message), { user_id })
       return NextResponse.json({ error: authError.message }, { status: 500 })
     }
 

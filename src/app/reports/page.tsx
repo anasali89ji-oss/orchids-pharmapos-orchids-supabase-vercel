@@ -287,7 +287,10 @@ function ReportsContent() {
                       <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
                       <Tooltip 
                         contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0' }}
-                        formatter={(value: number) => [`PKR ${value.toLocaleString()}`, 'Sales']} 
+                        formatter={(value) => {
+                          const n = typeof value === 'number' ? value : Number(value ?? 0)
+                          return [`PKR ${n.toLocaleString()}`, 'Sales'] as [string, string]
+                        }}
                       />
                       <Area type="monotone" dataKey="amount" stroke="#0d9488" strokeWidth={2} fillOpacity={1} fill="url(#colorSales)" />
                     </AreaChart>

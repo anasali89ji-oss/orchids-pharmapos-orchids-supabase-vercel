@@ -106,6 +106,7 @@ export interface Return {
   status: 'Pending' | 'Approved' | 'Rejected' | 'Completed'
   notes: string | null
   approved_by: string | null
+  processed_by: string | null
   user_id: string | null
   created_at: string
   updated_at: string

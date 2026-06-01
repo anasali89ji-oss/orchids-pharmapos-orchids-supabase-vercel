@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (authError) {
-      logger.error('Failed to create auth user', authError, { email })
+      logger.error('Failed to create auth user', new Error(authError.message), { email })
       return NextResponse.json({ error: authError.message }, { status: 500 })
     }
 

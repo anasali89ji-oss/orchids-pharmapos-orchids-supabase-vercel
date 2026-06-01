@@ -21,7 +21,7 @@ export async function getStripeClient() {
     }
 
     return new Stripe(stripeConfig.secretKey, {
-      apiVersion: '2025-01-27.acacia', // Use latest API version
+      apiVersion: '2025-10-29.clover', // Matches stripe@19.x SDK
       typescript: true,
     })
   } catch (error) {

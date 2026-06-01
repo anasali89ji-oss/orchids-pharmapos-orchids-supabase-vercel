@@ -23,7 +23,11 @@ export async function GET(request: NextRequest) {
     ])
 
     if (ping1.error || ping2.error) {
-      logger.error('Connection ping failed', { p1: ping1.error, p2: ping2.error })
+      const msg = ping1.error?.message || ping2.error?.message || 'Ping failed'
+      logger.error('Connection ping failed', new Error(msg), {
+        ping1_error: ping1.error?.message,
+        ping2_error: ping2.error?.message,
+      })
       return NextResponse.json(
         { error: ping1.error?.message || ping2.error?.message },
         { status: 500 }

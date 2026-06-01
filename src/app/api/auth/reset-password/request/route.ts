@@ -44,9 +44,10 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Generate reset token (valid for 1 hour)
-    const resetToken = Math.random().toString(36).substring(2, 15) +
-                     Math.random().toString(36).substring(2, 15)
+    // Generate a cryptographically secure reset token (valid for 1 hour)
+    const tokenBytes = new Uint8Array(32)
+    crypto.getRandomValues(tokenBytes)
+    const resetToken = Array.from(tokenBytes).map(b => b.toString(16).padStart(2, '0')).join('')
 
     const { error: updateError } = await supabaseAdmin
       .from('users')
@@ -61,7 +62,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: updateError.message }, { status: 500 })
     }
 
-    // Send reset email via Supabase Auth
+    // Send reset email via Supabase Auth (non-fatal if it fails — we have our own token)
     const { error: authError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'recovery',
       email,
@@ -71,8 +72,9 @@ export async function POST(request: NextRequest) {
     })
 
     if (authError) {
-      logger.warn('Auth link generation failed (non-fatal)', authError)
-      // Continue - we've set our own reset token
+      // AuthError isn't a plain Error — log message string only
+      logger.warn('Auth link generation failed (non-fatal)', { reason: authError.message })
+      // Continue — we've set our own reset token above
     }
 
     logger.info('Password reset requested', { user_id: user.id, email })
