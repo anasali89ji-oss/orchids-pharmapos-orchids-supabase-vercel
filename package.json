@@ -8,8 +8,7 @@
         "start": "next start",
         "lint": "next lint",
         "typecheck": "tsc --noEmit",
-        "format": "prettier --write .",
-        "type": "module"
+        "format": "prettier --write ."
     },
     "dependencies": {
         "@babel/parser": "^7.28.5",
@@ -107,11 +106,11 @@
         "three-globe": "^2.43.0",
         "uuid": "^13.0.0",
         "vaul": "^1.1.2",
-        "zod": "^4.1.12"
+        "zod": "^4.1.12",
+        "magic-string": "0.30.21"
     },
     "devDependencies": {
         "@eslint/eslintrc": "^3.3.1",
-        "@netlify/plugin-nextjs": "^5.1.3",
         "@tailwindcss/postcss": "^4",
         "@types/node": "^20",
         "@types/react": "^19",

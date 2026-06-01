@@ -1,59 +1,44 @@
-# Vercel deployment ignore file
-# These files will not be uploaded to Vercel
-
-# IDE and editor files
+# IDE
 .vscode
 .idea
 *.swp
 *.swo
-*~
 
-# OS files
+# OS
 .DS_Store
 Thumbs.db
 
 # Git
 .git
-.gitignore
-.gitattributes
 
-# Documentation
-README.md
+# Docs (not needed at runtime)
 *.md
-!IMPORTANT_NOTES.md
+NETLIFY_DEPLOYMENT_GUIDE.md
+DEPLOYMENT.md
 
-# Logging
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Testing
+# Test files
 coverage
-.nyc_output
-test
-tests
 *.spec.ts
 *.spec.tsx
 *.test.ts
 *.test.tsx
 __tests__
 
-# Build artifacts (will be built on Vercel)
+# Build artifacts — Vercel rebuilds these
 .next
 out
 dist
 build
 
-# Dependency directories (will be installed on Vercel)
+# Local deps — Vercel installs fresh
 node_modules
 
-# Misc
-.cache
-.temp
-tmp
-*.tmp
+# Local env — NEVER deploy these
 .env.local
 .env.development
 .env.test
+
+# Misc
+.cache
+tmp
+*.tmp
