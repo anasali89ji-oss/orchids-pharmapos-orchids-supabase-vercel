@@ -3,22 +3,31 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { logger } from '@/lib/logger'
 import { rateLimit } from '@/lib/rate-limit'
+import { verifySuperAdmin } from '@/lib/verify-superadmin'
 
 // Node runtime for database operations with cryptographic functions
 export const runtime = 'nodejs'
 
-// Simple password generator (no bcrypt dependency)
-function generatePassword(length = 12): string {
-  const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%'
+// Cryptographically secure password generator using Node.js crypto
+function generatePassword(length = 16): string {
+  const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*'
+  const randomBytes = new Uint8Array(length * 2)
+  crypto.getRandomValues(randomBytes)
   let password = ''
-  for (let i = 0 ; i < length ; i++) {
-    password += charset[Math.floor(Math.random() * charset.length)]
+  for (const byte of randomBytes) {
+    if (password.length >= length) break
+    const index = byte % charset.length
+    password += charset[index]
   }
   return password
 }
 
 export async function POST(request: NextRequest) {
   try {
+    // Verify the caller is an authenticated active super admin
+    const auth = await verifySuperAdmin(request)
+    if (!auth.ok) return auth.response
+
     const rateLimitResult = await rateLimit(request, {
       interval: 3600000, // 1 hour
       maxRequests: 50,

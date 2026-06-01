@@ -24,10 +24,23 @@
 .DS_Store
 *.pem
 
-# debug
+# debug logs — never commit
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+debug.log
+*.log
+
+# local env files — never commit
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+.env.staging
+
+# credentials doc — local reference only, never commit
+CREDENTIALS.md
 .pnpm-debug.log*
 
 # vercel

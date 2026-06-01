@@ -3,12 +3,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { logger } from '@/lib/logger'
 import { rateLimit } from '@/lib/rate-limit'
+import { verifySuperAdmin } from '@/lib/verify-superadmin'
 
 // Edge runtime compatible
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 
 export async function POST(request: NextRequest) {
   try {
+    // Only super admins may cancel subscriptions server-side
+    const auth = await verifySuperAdmin(request)
+    if (!auth.ok) return auth.response
+
     // Rate limiting
     const rateLimitResult = await rateLimit(request, {
       interval: 3600000, // 1 hour

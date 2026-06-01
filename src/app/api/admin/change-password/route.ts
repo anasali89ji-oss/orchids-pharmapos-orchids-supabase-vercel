@@ -3,12 +3,23 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { logger } from '@/lib/logger'
 import { rateLimit } from '@/lib/rate-limit'
+import { verifySession } from '@/lib/verify-session'
 
 // Node runtime for auth operations
 export const runtime = 'nodejs'
 
 export async function POST(request: NextRequest) {
   try {
+    // Require a valid session; only pharmacy_admin or manager may call this
+    const auth = await verifySession(request)
+    if (!auth.ok) return auth.response
+
+    const allowedRoles = ['pharmacy_admin', 'manager']
+    if (!auth.role || !allowedRoles.includes(auth.role)) {
+      logger.warn('Change password: insufficient role', { role: auth.role, caller: auth.userId })
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     const rateLimitResult = await rateLimit(request, {
       interval: 300000, // 5 minutes
       maxRequests: 3,

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { logger } from '@/lib/logger'
 import { rateLimit } from '@/lib/rate-limit'
+import { verifySuperAdmin } from '@/lib/verify-superadmin'
 
 // Node runtime for database operations
 export const runtime = 'nodejs'
@@ -15,6 +16,10 @@ const TIER_PRICES: Record<string, number> = {
 
 export async function POST(request: NextRequest) {
   try {
+    // Verify the caller is an authenticated active super admin
+    const auth = await verifySuperAdmin(request)
+    if (!auth.ok) return auth.response
+
     const rateLimitResult = await rateLimit(request, {
       interval: 3600000, // 1 hour
       maxRequests: 20,

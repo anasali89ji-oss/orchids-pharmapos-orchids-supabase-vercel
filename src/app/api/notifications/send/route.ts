@@ -3,12 +3,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { logger } from '@/lib/logger'
 import { rateLimit } from '@/lib/rate-limit'
+import { verifySession } from '@/lib/verify-session'
 
 // Node runtime for sending notifications
 export const runtime = 'nodejs'
 
 export async function POST(request: NextRequest) {
   try {
+    // Require authenticated session
+    const auth = await verifySession(request)
+    if (!auth.ok) return auth.response
+
     const rateLimitResult = await rateLimit(request, {
       interval: 60000, // 1 minute
       maxRequests: 50,

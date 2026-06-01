@@ -9,13 +9,19 @@ const LOADER = path.resolve(__dirname, "src/visual-edits/component-tagger-loader
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
-      { protocol: "https", hostname: "**" },
-      { protocol: "http",  hostname: "**" },
+      // Supabase storage — tightened from wildcard "**"
+      { protocol: "https", hostname: "*.supabase.co" },
+      { protocol: "https", hostname: "*.supabase.in" },
+      // CDN / avatar providers commonly used
+      { protocol: "https", hostname: "avatars.githubusercontent.com" },
+      { protocol: "https", hostname: "lh3.googleusercontent.com" },
+      { protocol: "https", hostname: "*.cloudinary.com" },
     ],
   },
 
-  typescript: { ignoreBuildErrors: true },
-  eslint:     { ignoreDuringBuilds: true },
+  // Re-enabled so real errors surface in Vercel build logs
+  typescript: { ignoreBuildErrors: false },
+  eslint:     { ignoreDuringBuilds: false },
 
   compress:        true,
   poweredByHeader: false,
